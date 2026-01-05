@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,12 +20,17 @@ type LogrusConfig struct {
 	ReportCaller  bool   `json:"report_caller"`
 }
 
+type JellyfinConfig struct {
+	URL    string
+	APIKey string
+	UserID string
+}
+
 type Config struct {
-	JellyfinURL string       `json:"jellyfin_url"`
-	APIKey      string       `json:"api_key"`
-	UserID      string       `json:"user_id"`
-	ServerPort  string       `json:"server_port"`
-	Logrus      LogrusConfig `json:"logrus"`
+	Environment models.Environment `json:"environment"`
+	ServerPort  string             `json:"server_port"`
+	Logrus      LogrusConfig       `json:"logrus"`
+	Jellyfin    JellyfinConfig     `json:"jellyfin"`
 }
 
 func configureLogrus(config *LogrusConfig) {
@@ -78,43 +84,56 @@ func getConfigPath(environment models.Environment) (path string) {
 	return
 }
 
-func getEnvironment() models.Environment {
-	// Default
-	environment := models.Development
-
-	env := os.Getenv("ENVIRONMENT")
-
-	if env == "" {
-		logrus.Warn("ENVIRONMENT variable not set, defaulting to 'development'")
-		environment = models.Development
-	} else {
-		environment = models.Environment(env)
+func loadEnv() Config {
+	if err := godotenv.Load(); err != nil {
+		logrus.Infof("No .env file loaded or error reading it: %v", err)
 	}
 
-	if environment != models.Development && environment != models.Production {
+	// Check required environment variables
+	requiredVars := []string{"JELLYFIN_URL", "JELLYFIN_API_KEY", "JELLYFIN_USER_ID", "ENVIRONMENT"}
+	for _, v := range requiredVars {
+		if os.Getenv(v) == "" {
+			logrus.Fatalf("Environment variable %s not set", v)
+		}
+	}
+
+	env := os.Getenv("ENVIRONMENT")
+	if env != string(models.Development) && env != string(models.Production) {
 		logrus.Fatalf("Invalid ENVIRONMENT value: %s. Must be 'development' or 'production'", env)
 	}
 
-	logrus.Infof("Running in %s environment", environment)
+	logrus.Infof("Running in %s environment", env)
 
-	return environment
+	return Config{
+		Environment: models.Environment(env),
+		Jellyfin: JellyfinConfig{
+			URL:    os.Getenv("JELLYFIN_URL"),
+			APIKey: os.Getenv("JELLYFIN_API_KEY"),
+			UserID: os.Getenv("JELLYFIN_USER_ID"),
+		},
+	}
 }
 
-func loadConfig(environment models.Environment) (*Config, error) {
-	configPath := getConfigPath(environment)
+func loadConfig() (*Config, error) {
+
+	// Load environment variables from .env file
+	config := loadEnv()
+
+	configPath := getConfigPath(config.Environment)
 	logrus.Infof("Loading configuration from: %s", configPath)
 
+	// Read config file
 	file, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var config Config
 	err = json.Unmarshal(file, &config)
 	if err != nil {
 		return nil, err
 	}
 
+	// Merge config with environment variables and config file
 	return &config, nil
 }
 
@@ -127,12 +146,9 @@ func main() {
 
 	logrus.Info("Starting jellyfin-duplicate application...")
 
-	// Determine environment
-	environment := getEnvironment()
-
 	// Load configuration
 	logrus.Info("Loading configuration...")
-	config, err := loadConfig(environment)
+	config, err := loadConfig()
 	if err != nil {
 		logrus.Fatalf("Failed to load config: %v", err)
 	}
@@ -140,10 +156,10 @@ func main() {
 	// Configure logrus based on config
 	configureLogrus(&config.Logrus)
 
-	logrus.Infof("Configuration loaded successfully. Jellyfin URL: %s", config.JellyfinURL)
+	logrus.Infof("Configuration loaded successfully. Jellyfin URL: %s", config.Jellyfin.URL)
 
 	// Configure GIN mode
-	if environment == models.Production {
+	if config.Environment == models.Production {
 		gin.SetMode(gin.ReleaseMode)
 		logrus.Info("GIN set to Release mode")
 	} else {
@@ -152,11 +168,11 @@ func main() {
 
 	// Initialize Jellyfin client
 	logrus.Info("Initializing Jellyfin client...")
-	jellyfinClient := jellyfin.NewClient(config.JellyfinURL, config.APIKey)
+	jellyfinClient := jellyfin.NewClient(config.Jellyfin.URL, config.Jellyfin.APIKey)
 
 	// Set user ID for library access
-	logrus.Infof("Setting user ID: %s", config.UserID)
-	if err := jellyfinClient.SetUserID(config.UserID); err != nil {
+	logrus.Infof("Setting user ID: %s", config.Jellyfin.UserID)
+	if err := jellyfinClient.SetUserID(config.Jellyfin.UserID); err != nil {
 		logrus.Fatalf("Failed to set user ID: %v", err)
 	}
 	logrus.Info("Jellyfin client initialized successfully")

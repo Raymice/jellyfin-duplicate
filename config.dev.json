@@ -1,0 +1,9 @@
+{
+    "server_port": "8080",
+    "logrus": {
+        "level": "debug",
+        "format": "text",
+        "disable_colors": false,
+        "report_caller": false
+    }
+}

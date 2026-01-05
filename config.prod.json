@@ -1,0 +1,9 @@
+{
+    "server_port": "8080",
+    "logrus": {
+        "level": "info",
+        "format": "json",
+        "disable_colors": true,
+        "report_caller": true
+    }
+}
