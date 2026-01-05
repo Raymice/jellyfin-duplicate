@@ -2,9 +2,9 @@ package jellyfin
 
 import (
 	"fmt"
-	"log"
 	"jellyfin-duplicate/internal/models"
 	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
 	"sync"
 )
 
@@ -32,29 +32,29 @@ func (c *Client) SetUserID(userID string) error {
 }
 
 func (c *Client) GetAllMovies() ([]models.Movie, error) {
-	log.Println("Fetching all movies from Jellyfin...")
+	logrus.Info("Fetching all movies from Jellyfin...")
 	var movies []models.Movie
 	
 	// Get all libraries first
-	log.Println("Getting libraries...")
+	logrus.Debug("Getting libraries...")
 	libraries, err := c.getLibraries()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries: %v", err)
 	}
-	log.Printf("Found %d libraries", len(libraries))
+	logrus.Infof("Found %d libraries", len(libraries))
 	
 	// For each library, get movies
 	for _, library := range libraries {
-		log.Printf("Fetching movies from library: %s", library.Name)
+		logrus.Debugf("Fetching movies from library: %s", library.Name)
 		libraryMovies, err := c.getMoviesFromLibrary(library.ID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get movies from library %s: %v", library.Name, err)
 		}
-		log.Printf("Found %d movies in library: %s", len(libraryMovies), library.Name)
+		logrus.Infof("Found %d movies in library: %s", len(libraryMovies), library.Name)
 		movies = append(movies, libraryMovies...)
 	}
 	
-	log.Printf("Total movies fetched: %d", len(movies))
+	logrus.Infof("Total movies fetched: %d", len(movies))
 	return movies, nil
 }
 
@@ -125,7 +125,7 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 // GetUserPlayStatus fetches play status for a specific movie and user
 // GetAllUsers fetches all users from Jellyfin and populates the user cache
 func (c *Client) GetAllUsers() ([]models.User, error) {
-	log.Println("Fetching all users from Jellyfin...")
+	logrus.Info("Fetching all users from Jellyfin...")
 	var users []models.User
 	
 	_, err := c.client.R().
@@ -144,7 +144,7 @@ func (c *Client) GetAllUsers() ([]models.User, error) {
 	}
 	c.cacheMutex.Unlock()
 	
-	log.Printf("Found %d users and populated user cache", len(users))
+	logrus.Infof("Found %d users and populated user cache", len(users))
 	return users, nil
 }
 
@@ -227,7 +227,7 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.Movie, error) {
 
 // GetSeenMoviesForAllUsers fetches seen movies for all users in parallel (max 5 concurrent)
 func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]models.Movie, error) {
-	log.Printf("Fetching seen movies for %d users in parallel...", len(users))
+	logrus.Infof("Fetching seen movies for %d users in parallel...", len(users))
 	userSeenMovies := make(map[string][]models.Movie)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -246,7 +246,7 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]mod
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 			
-			log.Printf("Fetching seen movies for user: %s", u.Name)
+			logrus.Debugf("Fetching seen movies for user: %s", u.Name)
 			seenMovies, err := c.GetSeenMoviesForUser(u.ID)
 			if err != nil {
 				mu.Lock()
@@ -258,7 +258,7 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]mod
 			mu.Lock()
 			userSeenMovies[u.ID] = seenMovies
 			mu.Unlock()
-			log.Printf("Found %d seen movies for user: %s", len(seenMovies), u.Name)
+			logrus.Infof("Found %d seen movies for user: %s", len(seenMovies), u.Name)
 		}(user)
 	}
 	
@@ -268,7 +268,7 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]mod
 		return nil, fmt.Errorf("errors occurred while fetching seen movies: %v", errors)
 	}
 	
-	log.Printf("Successfully fetched seen movies for all %d users", len(users))
+	logrus.Infof("Successfully fetched seen movies for all %d users", len(users))
 	return userSeenMovies, nil
 }
 
@@ -346,12 +346,12 @@ func (c *Client) GetUserName(userID string) (string, error) {
 
 // MarkMovieAsPlayed marks a movie as played for a specific user using Jellyfin API
 func (c *Client) MarkMovieAsPlayed(movieID string, userID string, movieName string, userName string) error {
-	log.Printf("Marking movie %s (%s) as played for user %s (%s)", movieName, movieID, userName, userID)
+	logrus.Infof("Marking movie %s (%s) as played for user %s (%s)", movieName, movieID, userName, userID)
 	
 	// Jellyfin API endpoint to mark an item as played
 	// Alternative endpoint format that might work better
 	url := fmt.Sprintf("%s/Users/%s/PlayedItems/%s", c.baseURL, userID, movieID)
-	log.Printf("Using URL: %s", url)
+	logrus.Debugf("Using URL: %s", url)
 	
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
@@ -359,64 +359,64 @@ func (c *Client) MarkMovieAsPlayed(movieID string, userID string, movieName stri
 		Post(url)
 	
 	if err != nil {
-		log.Printf("Network error marking movie as played: %v", err)
+		logrus.Errorf("Network error marking movie as played: %v", err)
 		return fmt.Errorf("failed to mark movie as played: %v", err)
 	}
 	
 	// Check response status code
 	statusCode := resp.StatusCode()
-	log.Printf("Jellyfin API response status: %d", statusCode)
+	logrus.Debugf("Jellyfin API response status: %d", statusCode)
 	
 	// Debug: Log the full response for troubleshooting
 	if statusCode != 204 && statusCode != 200 {
-		log.Printf("Response body: %s", string(resp.Body()))
+		logrus.Warnf("Response body: %s", string(resp.Body()))
 	}
 	
 	// Jellyfin API returns 204 No Content on success for this endpoint
 	// Some versions might return 200 OK
 	if statusCode != 204 && statusCode != 200 {
-		log.Printf("Unexpected status code %d when marking movie as played", statusCode)
+		logrus.Errorf("Unexpected status code %d when marking movie as played", statusCode)
 		return fmt.Errorf("unexpected status code %d when marking movie as played", statusCode)
 	}
 	
-	log.Printf("Successfully marked movie %s (%s) as played for user %s (%s)", movieName, movieID, userName, userID)
+	logrus.Infof("Successfully marked movie %s (%s) as played for user %s (%s)", movieName, movieID, userName, userID)
 	return nil
 }
 
 // DeleteMovie deletes a movie from Jellyfin using the API
 func (c *Client) DeleteMovie(movieID string) error {
-	log.Printf("Deleting movie %s from Jellyfin", movieID)
+	logrus.Infof("Deleting movie %s from Jellyfin", movieID)
 	
 	// Jellyfin API endpoint to delete an item
 	url := fmt.Sprintf("%s/Items/%s", c.baseURL, movieID)
-	log.Printf("Using delete URL: %s", url)
+	logrus.Debugf("Using delete URL: %s", url)
 	
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		Delete(url)
 	
 	if err != nil {
-		log.Printf("Network error deleting movie: %v", err)
+		logrus.Errorf("Network error deleting movie: %v", err)
 		return fmt.Errorf("failed to delete movie: %v", err)
 	}
 	
 	// Check response status code
 	statusCode := resp.StatusCode()
-	log.Printf("Jellyfin API delete response status: %d", statusCode)
+	logrus.Debugf("Jellyfin API delete response status: %d", statusCode)
 	
 	// Debug: Log the full response for troubleshooting
 	if statusCode != 204 && statusCode != 200 {
-		log.Printf("Delete response body: %s", string(resp.Body()))
+		logrus.Warnf("Delete response body: %s", string(resp.Body()))
 	}
 	
 	// Jellyfin API returns 204 No Content on successful deletion
 	// Some versions might return 200 OK
 	if statusCode != 204 && statusCode != 200 {
-		log.Printf("Unexpected status code %d when deleting movie", statusCode)
+		logrus.Errorf("Unexpected status code %d when deleting movie", statusCode)
 		return fmt.Errorf("unexpected status code %d when deleting movie", statusCode)
 	}
 	
-	log.Printf("Successfully deleted movie %s from Jellyfin", movieID)
+	logrus.Infof("Successfully deleted movie %s from Jellyfin", movieID)
 	return nil
 }
 

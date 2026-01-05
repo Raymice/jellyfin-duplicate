@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"jellyfin-duplicate/internal/handlers"
 	"jellyfin-duplicate/internal/jellyfin"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
@@ -32,52 +32,52 @@ func loadConfig() (*Config, error) {
 }
 
 func main() {
-	log.Println("Starting jellyfin-duplicate application...")
+	logrus.Info("Starting jellyfin-duplicate application...")
 	
 	// Load configuration
-	log.Println("Loading configuration...")
+	logrus.Info("Loading configuration...")
 	config, err := loadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logrus.Fatalf("Failed to load config: %v", err)
 	}
-	log.Printf("Configuration loaded successfully. Jellyfin URL: %s", config.JellyfinURL)
+	logrus.Infof("Configuration loaded successfully. Jellyfin URL: %s", config.JellyfinURL)
 	
 	// Initialize Jellyfin client
-	log.Println("Initializing Jellyfin client...")
+	logrus.Info("Initializing Jellyfin client...")
 	jellyfinClient := jellyfin.NewClient(config.JellyfinURL, config.APIKey)
 	
 	// Set user ID for library access
-	log.Printf("Setting user ID: %s", config.UserID)
+	logrus.Infof("Setting user ID: %s", config.UserID)
 	if err := jellyfinClient.SetUserID(config.UserID); err != nil {
-		log.Fatalf("Failed to set user ID: %v", err)
+		logrus.Fatalf("Failed to set user ID: %v", err)
 	}
-	log.Println("Jellyfin client initialized successfully")
+	logrus.Info("Jellyfin client initialized successfully")
 
 	// Create Gin router
-	log.Println("Setting up web server...")
+	logrus.Info("Setting up web server...")
 	r := gin.Default()
 
 	// Load HTML templates
-	log.Println("Loading HTML templates...")
+	logrus.Info("Loading HTML templates...")
 	r.LoadHTMLGlob("web/templates/*")
 
 	// Set up handlers
-	log.Println("Initializing handlers...")
+	logrus.Info("Initializing handlers...")
 	handler := handlers.NewHandler(jellyfinClient)
 
 	// Routes
-	log.Println("Configuring routes...")
+	logrus.Info("Configuring routes...")
 	r.GET("/", handler.GetDuplicatesPage)
 	r.GET("/api/duplicates", handler.GetDuplicatesJSON)
 	r.GET("/api/mark-as-seen", handler.MarkMovieAsSeen)
 	r.GET("/api/delete-movie", handler.DeleteMovie)
-	log.Println("Routes configured successfully")
+	logrus.Info("Routes configured successfully")
 
 	// Start server
 	port := ":" + config.ServerPort
-	log.Printf("Starting server on %s", port)
-	log.Printf("Application ready. Access the web interface at http://localhost%s", port)
+	logrus.Infof("Starting server on %s", port)
+	logrus.Infof("Application ready. Access the web interface at http://localhost%s", port)
 	if err := r.Run(port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		logrus.Fatalf("Failed to start server: %v", err)
 	}
 }

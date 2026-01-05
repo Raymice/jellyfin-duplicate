@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"jellyfin-duplicate/internal/jellyfin"
 	"jellyfin-duplicate/internal/models"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type Handler struct {
@@ -20,17 +20,17 @@ func NewHandler(client *jellyfin.Client) *Handler {
 }
 
 func (h *Handler) GetDuplicatesPage(c *gin.Context) {
-	log.Println("Handling request for duplicates page")
+	logrus.Info("Handling request for duplicates page")
 	duplicates, err := h.findDuplicates()
 	if err != nil {
-		log.Printf("Error finding duplicates: %v", err)
+		logrus.Errorf("Error finding duplicates: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 
-	log.Printf("Found %d duplicate pairs", len(duplicates))
+	logrus.Infof("Found %d duplicate pairs", len(duplicates))
 
 	// Add play status discrepancy information to each duplicate
 	for i, dup := range duplicates {
@@ -53,7 +53,7 @@ func (h *Handler) GetDuplicatesPage(c *gin.Context) {
 		}
 	}
 
-	log.Printf("Rendering duplicates page with %d potential duplicates and %d potential mismatches",
+	logrus.Infof("Rendering duplicates page with %d potential duplicates and %d potential mismatches",
 		len(potentialDuplicates), len(potentialMismatches))
 
 	c.HTML(http.StatusOK, "duplicates.html", gin.H{
@@ -76,14 +76,14 @@ func (h *Handler) GetPlayStatusForAllUsers(dup models.DuplicateResult) (models.D
 		// For movie 1
 		status1, err := h.jellyfinClient.GetUserPlayStatus(dup.Movie1.ID, user.ID)
 		if err != nil {
-			log.Printf("Error getting play status for movie %s, user %s: %v", dup.Movie1.ID, user.ID, err)
+			logrus.Warnf("Error getting play status for movie %s, user %s: %v", dup.Movie1.ID, user.ID, err)
 			continue
 		}
 
 		// For movie 2
 		status2, err := h.jellyfinClient.GetUserPlayStatus(dup.Movie2.ID, user.ID)
 		if err != nil {
-			log.Printf("Error getting play status for movie %s, user %s: %v", dup.Movie2.ID, user.ID, err)
+			logrus.Warnf("Error getting play status for movie %s, user %s: %v", dup.Movie2.ID, user.ID, err)
 			continue
 		}
 
@@ -207,17 +207,17 @@ func (h *Handler) GetMultiUserPlayStatus() ([]models.Movie, error) {
 }
 
 func (h *Handler) GetDuplicatesJSON(c *gin.Context) {
-	log.Println("Handling request for duplicates JSON")
+	logrus.Info("Handling request for duplicates JSON")
 	duplicates, err := h.findDuplicates()
 	if err != nil {
-		log.Printf("Error finding duplicates for JSON response: %v", err)
+		logrus.Errorf("Error finding duplicates for JSON response: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 
-	log.Printf("Returning %d duplicates in JSON format", len(duplicates))
+	logrus.Infof("Returning %d duplicates in JSON format", len(duplicates))
 	c.JSON(http.StatusOK, duplicates)
 }
 
@@ -225,11 +225,11 @@ func (h *Handler) GetDuplicatesJSON(c *gin.Context) {
 func (h *Handler) DeleteMovie(c *gin.Context) {
 	movieID := c.Query("movieId")
 
-	log.Printf("Received request to delete movie %s", movieID)
+	logrus.Infof("Received request to delete movie %s", movieID)
 
 	// Validate required parameters
 	if movieID == "" {
-		log.Println("Invalid request: missing movieId parameter")
+		logrus.Warn("Invalid request: missing movieId parameter")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "movieId is a required parameter",
 		})
@@ -238,7 +238,7 @@ func (h *Handler) DeleteMovie(c *gin.Context) {
 
 	// Additional validation: check if movieID is valid format
 	if len(movieID) < 32 || len(movieID) > 36 {
-		log.Printf("Invalid movieId format: %s", movieID)
+		logrus.Warnf("Invalid movieId format: %s", movieID)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid movieId format",
 		})
@@ -248,14 +248,14 @@ func (h *Handler) DeleteMovie(c *gin.Context) {
 	// Call Jellyfin API to delete the movie
 	err := h.jellyfinClient.DeleteMovie(movieID)
 	if err != nil {
-		log.Printf("Failed to delete movie %s: %v", movieID, err)
+		logrus.Errorf("Failed to delete movie %s: %v", movieID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Errorf("failed to delete movie: %v", err).Error(),
 		})
 		return
 	}
 
-	log.Printf("Successfully deleted movie %s", movieID)
+	logrus.Infof("Successfully deleted movie %s", movieID)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Movie deleted successfully",
@@ -267,11 +267,11 @@ func (h *Handler) MarkMovieAsSeen(c *gin.Context) {
 	movieID := c.Query("movieId")
 	userID := c.Query("userId")
 
-	log.Printf("Received request to mark movie %s as seen for user %s", movieID, userID)
+	logrus.Infof("Received request to mark movie %s as seen for user %s", movieID, userID)
 
 	// Validate required parameters
 	if movieID == "" || userID == "" {
-		log.Println("Invalid request: missing movieId or userId parameter")
+		logrus.Warn("Invalid request: missing movieId or userId parameter")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "movieId and userId are required parameters",
 		})
@@ -280,7 +280,7 @@ func (h *Handler) MarkMovieAsSeen(c *gin.Context) {
 
 	// Additional validation: check if userID is valid format (UUID-like)
 	if len(userID) < 32 || len(userID) > 36 {
-		log.Printf("Invalid userId format: %s", userID)
+		logrus.Warnf("Invalid userId format: %s", userID)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid userId format",
 		})
@@ -289,7 +289,7 @@ func (h *Handler) MarkMovieAsSeen(c *gin.Context) {
 
 	// Additional validation: check if movieID is valid format
 	if len(movieID) < 32 || len(movieID) > 36 {
-		log.Printf("Invalid movieId format: %s", movieID)
+		logrus.Warnf("Invalid movieId format: %s", movieID)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "invalid movieId format",
 		})
@@ -311,7 +311,7 @@ func (h *Handler) MarkMovieAsSeen(c *gin.Context) {
 	// Call Jellyfin API to mark movie as played
 	err := h.jellyfinClient.MarkMovieAsPlayed(movieID, userID, movieName, userName)
 	if err != nil {
-		log.Printf("Failed to mark movie %s (%s) as played for user %s (%s): %v", movieName, movieID, userName, userID, err)
+		logrus.Errorf("Failed to mark movie %s (%s) as played for user %s (%s): %v", movieName, movieID, userName, userID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Errorf("failed to mark movie as played: %v", err).Error(),
 		})
@@ -325,14 +325,14 @@ func (h *Handler) MarkMovieAsSeen(c *gin.Context) {
 }
 
 func (h *Handler) findDuplicates() ([]models.DuplicateResult, error) {
-	log.Println("Starting duplicate detection process...")
+	logrus.Info("Starting duplicate detection process...")
 	// Get all movies with multi-user play status from Jellyfin
 	movies, err := h.GetMultiUserPlayStatus()
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("Analyzing %d movies for duplicates", len(movies))
+	logrus.Infof("Analyzing %d movies for duplicates", len(movies))
 
 	var duplicates []models.DuplicateResult
 
@@ -348,7 +348,7 @@ func (h *Handler) findDuplicates() ([]models.DuplicateResult, error) {
 	}
 
 	// Find duplicates by checking groups with more than one movie
-	log.Printf("Found %d unique movie groups", len(movieMap))
+	logrus.Infof("Found %d unique movie groups", len(movieMap))
 	for _, group := range movieMap {
 		if len(group) > 1 {
 			// Compare all pairs in the group
@@ -372,7 +372,7 @@ func (h *Handler) findDuplicates() ([]models.DuplicateResult, error) {
 		}
 	}
 
-	log.Printf("Duplicate detection completed. Found %d duplicate pairs", len(duplicates))
+	logrus.Infof("Duplicate detection completed. Found %d duplicate pairs", len(duplicates))
 	return duplicates, nil
 }
 
