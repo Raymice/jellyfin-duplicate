@@ -3,7 +3,7 @@ package http
 import (
 	"fmt"
 	"jellyfin-duplicate/client/jellyfin/models"
-
+	"strings"
 	"sync"
 
 	"github.com/go-resty/resty/v2"
@@ -30,7 +30,7 @@ func NewClient(baseURL, apiKey string, userID string) *Client {
 }
 
 func (c *Client) GetAllMovies() ([]models.Movie, error) {
-	logrus.Info("Fetching all movies from Jellyfin...")
+	logrus.Info("Fetching all movies from Jellyfin in parallel...")
 	var movies []models.Movie
 
 	// Get all libraries first
@@ -41,15 +41,56 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 	}
 	logrus.Infof("Found %d libraries", len(libraries))
 
-	// For each library, get movies
+	// Use channels for parallel fetching
+	movieChannel := make(chan []models.Movie, len(libraries))
+	errorChannel := make(chan error, len(libraries))
+	var wg sync.WaitGroup
+
+	// Limit concurrent goroutines to avoid overwhelming the system
+	// This prevents too many simultaneous API calls
+	maxConcurrent := 5
+	semaphore := make(chan struct{}, maxConcurrent)
+
+	// For each library, get movies in parallel
 	for _, library := range libraries {
-		logrus.Debugf("Fetching movies from library: %s", library.Name)
-		libraryMovies, err := c.getMoviesFromLibrary(library.ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get movies from library %s: %v", library.Name, err)
-		}
-		logrus.Infof("Found %d movies in library: %s", len(libraryMovies), library.Name)
+		wg.Add(1)
+		go func(lib models.Library) {
+			defer wg.Done()
+
+			// Acquire semaphore slot
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			logrus.Debugf("Fetching movies from library: %s", lib.Name)
+			libraryMovies, err := c.getMoviesFromLibrary(lib.ID)
+			if err != nil {
+				errorChannel <- fmt.Errorf("failed to get movies from library %s: %v", lib.Name, err)
+				return
+			}
+			logrus.Infof("Found %d movies in library: %s", len(libraryMovies), lib.Name)
+			movieChannel <- libraryMovies
+		}(library)
+	}
+
+	// Close channels when all goroutines are done
+	go func() {
+		wg.Wait()
+		close(movieChannel)
+		close(errorChannel)
+	}()
+
+	// Collect results from channels
+	for libraryMovies := range movieChannel {
 		movies = append(movies, libraryMovies...)
+	}
+
+	// Check for any errors
+	if len(errorChannel) > 0 {
+		var errorMessages []string
+		for err := range errorChannel {
+			errorMessages = append(errorMessages, err.Error())
+		}
+		return nil, fmt.Errorf("errors occurred while fetching movies: %s", strings.Join(errorMessages, "; "))
 	}
 
 	logrus.Infof("Total movies fetched: %d", len(movies))
