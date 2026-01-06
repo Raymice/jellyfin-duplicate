@@ -5,10 +5,28 @@
 <head>
     <title>Jellyfin Duplicate Finder - Analysis Results</title>
     <style>
+        :root {
+            /* Jellyfin theme colors */
+            --primary-color: #00a4dc;
+            --primary-hover: #0086b3;
+            --accent-color: #00a4dc;
+            --background-dark: #0f1219;
+            --background-medium: #1e2738;
+            --background-light: #2e445e;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f9f9f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
         }
 
         /* Loading indicator */
@@ -16,7 +34,7 @@
             display: none;
             text-align: center;
             padding: 40px;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         .loading.show {
@@ -24,8 +42,8 @@
         }
 
         .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #4CAF50;
+            border: 4px solid var(--background-light);
+            border-top: 4px solid var(--primary-color);
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -44,158 +62,230 @@
         }
 
         h1 {
-            color: #333;
+            color: var(--primary-color);
             margin-bottom: 20px;
+            font-size: 2em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         /* Navigation bar */
         .navbar {
-            background-color: #4CAF50;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
             color: white;
-            padding: 15px 20px;
+            padding: 18px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .navbar-title {
-            font-size: 1.3em;
+            font-size: 1.4em;
             font-weight: bold;
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .home-btn {
-            padding: 8px 16px;
+            padding: 10px 20px;
             background-color: white;
-            color: #4CAF50;
-            border: none;
-            border-radius: 4px;
+            color: var(--primary-color);
+            border: 2px solid white;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 0.95em;
             font-weight: bold;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .home-btn:hover {
-            background-color: #f0f0f0;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
             transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .summary-box {
-            background-color: white;
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: var(--background-medium);
+            border: 1px solid var(--primary-color);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .summary-title {
             font-weight: bold;
-            color: #4CAF50;
-            margin-bottom: 10px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
         }
 
         .summary-count {
             font-size: 1.2em;
-            color: #333;
+            color: var(--text-primary);
             font-weight: bold;
         }
 
         .section-title {
-            font-size: 1.3em;
+            font-size: 1.4em;
             font-weight: bold;
-            color: #333;
-            margin: 25px 0 15px 0;
-            border-bottom: 2px solid #4CAF50;
-            padding-bottom: 8px;
+            color: var(--primary-color);
+            margin: 30px 0 20px 0;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 10px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
 
         .duplicate-pair {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            background-color: white;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--background-light);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: var(--background-medium);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .duplicate-pair:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
         .duplicate {
-            background-color: #ffebee;
-            border-left: 4px solid #f44336;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+            border-left: 5px solid var(--danger-color);
         }
 
         .mismatch {
-            background-color: #e8f5e9;
-            border-left: 4px solid #4CAF50;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+            border-left: 5px solid var(--success-color);
         }
 
         .movie-info {
-            margin-bottom: 10px;
-            padding: 8px;
-            background-color: #fafafa;
-            border-radius: 3px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: var(--background-light);
+            border-radius: 6px;
+            border-left: 3px solid var(--primary-color);
+            transition: background-color 0.2s;
+        }
+
+        .movie-info:hover {
+            background-color: rgba(0, 164, 220, 0.1);
         }
 
         .movie-name {
             font-weight: bold;
-            font-size: 1.1em;
-            color: #2c3e50;
+            font-size: 1.2em;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .movie-path {
             font-family: monospace;
-            background-color: #f5f5f5;
-            padding: 8px;
-            border-radius: 3px;
+            background-color: var(--background-dark);
+            padding: 10px;
+            border-radius: 4px;
             font-size: 0.9em;
             overflow-wrap: break-word;
             max-width: 100%;
-            margin-top: 5px;
-            border: 1px solid #e1e1e1;
+            margin-top: 8px;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
         }
 
         .path-label {
             font-weight: bold;
-            font-size: 0.85em;
-            color: #666;
-            margin-top: 3px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+            display: block;
         }
 
         .similarity {
             font-style: italic;
-            color: #666;
-            margin-top: 8px;
+            color: var(--text-secondary);
+            margin-top: 12px;
             font-weight: bold;
+            padding: 8px;
+            background-color: var(--background-light);
+            border-radius: 4px;
+            display: inline-block;
         }
 
         .path-comparison {
-            font-size: 0.85em;
-            color: #888;
-            margin-top: 5px;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 8px;
             font-style: italic;
         }
 
         .similarity-percentage {
-            font-size: 1.1em;
+            font-size: 1.2em;
             font-weight: bold;
         }
 
         .duplicate-percentage {
-            color: #f44336;
+            color: var(--danger-color);
         }
 
         .mismatch-percentage {
-            color: #4CAF50;
+            color: var(--success-color);
         }
 
         .no-results {
             text-align: center;
             padding: 40px;
-            color: #666;
+            color: var(--text-secondary);
             font-style: italic;
         }
 
@@ -225,7 +315,7 @@
         .multi-user-status {
             margin-top: 5px;
             font-size: 0.9em;
-            color: #666;
+            color: var(--text-secondary);
         }
 
         .user-played-status {
@@ -235,99 +325,124 @@
         }
 
         .update-status-btn {
-            margin-top: 10px;
-            padding: 8px 16px;
-            background-color: #2196F3;
+            margin-top: 12px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #2196F3, #1976D2);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 0.9em;
-            transition: background-color 0.3s;
+            font-size: 0.95em;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(33, 150, 243, 0.3);
+            font-weight: bold;
         }
 
         .update-status-btn:hover {
-            background-color: #1976D2;
+            background: linear-gradient(135deg, #1976D2, #2196F3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(33, 150, 243, 0.4);
         }
 
         .update-status-btn:disabled {
-            background-color: #cccccc;
+            background: linear-gradient(135deg, #6c757d, #495057);
             cursor: not-allowed;
             opacity: 0.7;
+            transform: none;
+            box-shadow: none;
         }
 
         /* Delete Button Styles */
         .delete-movie-section {
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #fff8e1;
-            border-radius: 4px;
-            border-left: 3px solid #FF9800;
+            margin-top: 20px;
+            padding: 18px;
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.1), rgba(255, 152, 0, 0.05));
+            border-radius: 8px;
+            border-left: 4px solid var(--warning-color);
         }
 
         .delete-movie-header {
             font-weight: bold;
-            color: #FF9800;
-            margin-bottom: 10px;
+            color: var(--warning-color);
+            margin-bottom: 12px;
             font-size: 1.1em;
         }
 
         .delete-movie-description {
-            color: #666;
-            font-size: 0.9em;
+            color: var(--text-secondary);
+            font-size: 0.95em;
             margin-bottom: 15px;
             font-style: italic;
         }
 
         .delete-btn {
-            padding: 10px 20px;
-            background-color: #f44336;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--danger-color), #c82333);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-right: 10px;
+            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.3);
+        }
+
+        .delete-btn:hover {
+            background: linear-gradient(135deg, #c82333, var(--danger-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(220, 53, 69, 0.4);
+        }
+
+        .delete-btn:disabled {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            cursor: not-allowed;
+            opacity: 0.7;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .movie-delete-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--danger-color), #c82333);
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.95em;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            margin-right: 10px;
-        }
-
-        .delete-btn:hover {
-            background-color: #d32f2f;
-        }
-
-        .delete-btn:disabled {
-            background-color: #ef9a9a;
-            cursor: not-allowed;
-        }
-
-        .movie-delete-btn {
-            margin-top: 8px;
-            padding: 6px 12px;
-            background-color: #f44336;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
             font-size: 0.85em;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
         }
 
         .movie-delete-btn:hover {
-            background-color: #d32f2f;
+            background: linear-gradient(135deg, #c82333, var(--danger-color));
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(220, 53, 69, 0.3);
         }
 
         /* Safe to Delete Notice */
         .safe-to-delete-notice {
-            margin: 10px 0;
-            padding: 8px 12px;
-            background-color: #fff3cd;
-            border-radius: 4px;
-            color: #856404;
-            font-size: 0.9em;
+            margin: 15px 0;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(40, 167, 69, 0.1));
+            border-radius: 6px;
+            color: var(--success-color);
+            font-size: 0.95em;
             font-weight: bold;
             text-align: center;
-            border: 1px solid #ffeeba;
+            border: 2px solid var(--success-color);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
         }
 
         .update-status-section {
@@ -346,7 +461,7 @@
         }
 
         .discrepancy-description {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.9em;
             margin-bottom: 10px;
             font-style: italic;
@@ -362,23 +477,27 @@
         .user-checkbox-item {
             margin-bottom: 8px;
             padding: 8px;
-            background-color: white;
+            background-color: var(--background-light);
             border-radius: 4px;
             display: flex;
             align-items: center;
+            color: var(--text-primary);
+            transition: background-color 0.2s;
         }
 
         .user-checkbox-item:hover {
-            background-color: #f0f0f0;
+            background-color: rgba(0, 164, 220, 0.1);
         }
 
         .user-checkbox-item input[type="checkbox"] {
             margin-right: 10px;
+            cursor: pointer;
         }
 
         .user-checkbox-item label {
             cursor: pointer;
             flex: 1;
+            color: var(--text-primary);
         }
 
         /* Error Banner Styles */
@@ -472,15 +591,16 @@
         }
 
         .modal-content p {
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 10px;
             font-size: 1.1em;
         }
 
         .modal-subtext {
-            color: #999;
+            color: var(--text-secondary);
             font-size: 0.9em;
             font-style: italic;
+            opacity: 0.8;
         }
 
         /* Enhanced Modal Movie Info Styles */
@@ -506,9 +626,9 @@
         .modal-movie-path {
             font-family: monospace;
             font-size: 0.85em;
-            color: #666;
+            color: var(--text-secondary);
             padding: 8px;
-            background-color: #f5f5f5;
+            background-color: var(--background-light);
             border-radius: 4px;
             overflow-wrap: break-word;
             max-width: 100%;
@@ -586,7 +706,7 @@
         }
 
         .confirm-message {
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 20px;
             font-size: 1.05em;
             line-height: 1.5;
@@ -601,9 +721,9 @@
 
         .confirm-cancel-btn {
             padding: 12px 25px;
-            background-color: #f5f5f5;
-            color: #666;
-            border: 2px solid #ddd;
+            background-color: var(--background-light);
+            color: var(--text-primary);
+            border: 2px solid var(--background-medium);
             border-radius: 8px;
             cursor: pointer;
             font-size: 1em;
@@ -638,6 +758,75 @@
         .results-container {
             max-width: 1200px;
             margin: 0 auto;
+        }
+
+        /* Top right controls container */
+        .top-right-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--background-light);
+            color: var(--text-primary);
+            border: 1px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            background-color: var(--primary-color);
+            color: var(--background-dark);
+        }
+
+        /* Light mode styles */
+        body.light-mode {
+            --background-dark: #f8f9fa;
+            --background-medium: #ffffff;
+            --background-light: #e9ecef;
+            --text-primary: #333333;
+            --text-secondary: #6c757d;
+        }
+
+        body.light-mode .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+        }
+
+        body.light-mode .summary-box,
+        body.light-mode .duplicate-pair,
+        body.light-mode .movie-info {
+            background-color: var(--background-medium);
+            color: var(--text-primary);
+        }
+
+        body.light-mode .movie-path {
+            background-color: var(--background-dark);
+            color: var(--primary-color);
+        }
+
+        body.light-mode .theme-toggle {
+            background-color: var(--background-light);
+            border-color: var(--primary-color);
+        }
+
+        body.light-mode .home-btn {
+            color: var(--primary-color);
         }
     </style>
     <script>
@@ -682,6 +871,48 @@
 
         // Run initialization when DOM is loaded
         document.addEventListener('DOMContentLoaded', initializeButtonStates);
+
+        // Theme toggle function
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const themeBtn = document.querySelector('.theme-toggle');
+            
+            // Update button text based on current theme
+            if (document.body.classList.contains('light-mode')) {
+                themeBtn.textContent = '🌙';
+                themeBtn.title = 'Switch to dark mode';
+            } else {
+                themeBtn.textContent = '☀️';
+                themeBtn.title = 'Switch to light mode';
+            }
+            
+            // Save theme preference to localStorage
+            const isLightMode = document.body.classList.contains('light-mode');
+            localStorage.setItem('themePreference', isLightMode ? 'light' : 'dark');
+        }
+
+        // Load theme preference from localStorage
+        function loadThemePreference() {
+            const savedTheme = localStorage.getItem('themePreference');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+            }
+            
+            // Initialize theme button text
+            const themeBtn = document.querySelector('.theme-toggle');
+            if (themeBtn) {
+                if (document.body.classList.contains('light-mode')) {
+                    themeBtn.textContent = '🌙';
+                    themeBtn.title = 'Switch to dark mode';
+                } else {
+                    themeBtn.textContent = '☀️';
+                    themeBtn.title = 'Switch to light mode';
+                }
+            }
+        }
+
+        // Load theme preference when page loads
+        document.addEventListener('DOMContentLoaded', loadThemePreference);
 
         // Modal functions
         function showUpdateModal() {
@@ -762,8 +993,8 @@
             const modalContent = document.querySelector('.modal-content');
             if (modalContent) {
                 modalContent.innerHTML = `
-                    <div class="modal-spinner" style="border-top-color: #f44336;"></div>
-                    <h3 style="color: #f44336;">🗑️ Deleting Movie</h3>
+                    <div class="modal-spinner" style="border-top-color: var(--danger-color);"></div>
+                    <h3 style="color: var(--danger-color);">🗑️ Deleting Movie</h3>
                     <div class="modal-movie-info">
                         <div class="modal-movie-name">🎬 ${movieName}</div>
                         <div class="modal-movie-path">📁 ${moviePath}</div>
@@ -788,8 +1019,8 @@
                         // Update modal to show success
                         if (modalContent) {
                             modalContent.innerHTML = `
-                                <div class="modal-spinner" style="border-top-color: #4CAF50;"></div>
-                                <h3 style="color: #4CAF50;">✅ Deletion Complete!</h3>
+                                <div class="modal-spinner" style="border-top-color: var(--success-color);"></div>
+                                <h3 style="color: var(--success-color);">✅ Deletion Complete!</h3>
                                 <div class="modal-movie-info success">
                                     <div class="modal-movie-name">🎬 ${movieName}</div>
                                     <div class="modal-movie-path">📁 ${moviePath}</div>
@@ -872,8 +1103,8 @@
                         const modalContent = document.querySelector('.modal-content');
                         if (modalContent) {
                             modalContent.innerHTML = `
-                                <div class="modal-spinner" style="border-top-color: #4CAF50;"></div>
-                                <h3 style="color: #4CAF50;">✅ Update Complete!</h3>
+                                <div class="modal-spinner" style="border-top-color: var(--success-color);"></div>
+                                <h3 style="color: var(--success-color);">✅ Update Complete!</h3>
                                 <p>All selected users have been updated successfully.</p>
                                 <p class="modal-subtext">Refreshing page...</p>
                             `;
@@ -915,6 +1146,11 @@
 </head>
 
 <body>
+    <!-- Top right controls -->
+    <div class="top-right-controls">
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">🌓</button>
+    </div>
+
     <!-- Navigation bar -->
     <div class="navbar">
         <div class="navbar-title">🎬 Jellyfin Duplicate Finder</div>
@@ -967,7 +1203,7 @@
             {{/* DUPLICATES SECTION */}}
             {{if .potentialDuplicates}}
             <div class="section-title">🔍 Potential Duplicates ({{len .potentialDuplicates}})</div>
-            <p style="color: #666; margin-bottom: 15px;">
+            <p style="color: var(--text-secondary); margin-bottom: 15px;">
                 These pairs have ≥95% path similarity and are likely duplicates of the same movie:
             </p>
 
@@ -1077,7 +1313,7 @@
             {{/* MISMATCHES SECTION */}}
             {{if .potentialMismatches}}
             <div class="section-title">⚠️ Potential Mismatches ({{len .potentialMismatches}})</div>
-            <p style="color: #666; margin-bottom: 15px;">
+            <p style="color: var(--text-secondary); margin-bottom: 15px;">
                 These pairs have <95% path similarity and are likely different movies: </p>
 
                     {{range .potentialMismatches}}
