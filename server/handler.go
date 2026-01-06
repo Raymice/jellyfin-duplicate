@@ -22,6 +22,12 @@ func NewHandler(client *jellyfinClients.Client) *Handler {
 }
 
 // GET /
+func (h *Handler) GetHomePage(ctx *gin.Context) {
+	logrus.Info("Handling request for home page")
+	ctx.HTML(http.StatusOK, "home.html", gin.H{})
+}
+
+// GET /analysis
 func (h *Handler) GetDuplicatesPage(ctx *gin.Context) {
 	logrus.Info("Handling request for duplicates page")
 	duplicates, err := h.serverService.FindDuplicates()

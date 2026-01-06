@@ -53,7 +53,8 @@ func main() {
 
 	// Routes
 	logrus.Info("Configuring routes...")
-	r.GET("/", handler.GetDuplicatesPage)
+	r.GET("/", handler.GetHomePage)
+	r.GET("/analysis", handler.GetDuplicatesPage)
 	r.GET("/api/duplicates", handler.GetDuplicatesJSON)
 	r.GET("/api/mark-as-seen", handler.MarkMovieAsSeen)
 	r.GET("/api/delete-movie", handler.DeleteMovie)

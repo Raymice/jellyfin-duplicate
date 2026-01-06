@@ -1,0 +1,147 @@
+{{define "home.html"}}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Jellyfin Duplicate Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .start-btn {
+            padding: 15px 30px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .start-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .start-btn:active {
+            transform: translateY(0);
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            margin-top: 30px;
+            color: #999;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="logo">
+            🎬
+        </div>
+        <h1>Jellyfin Duplicate Finder</h1>
+        <p class="description">
+            Find and manage duplicate movies in your Jellyfin library.
+            Click the button below to start analyzing your collection.
+        </p>
+        <button class="start-btn" id="start-btn" onclick="startAnalysis()">
+            🔍 Start Analysis
+        </button>
+        <div class="loading" id="loading">
+            <div class="loader"></div>
+            <p>Analyzing your library...</p>
+        </div>
+        <div class="footer">
+            <p>This tool helps you identify duplicate movies and manage play status discrepancies.</p>
+        </div>
+    </div>
+
+    <script>
+        function startAnalysis() {
+            const startBtn = document.getElementById('start-btn');
+            const loading = document.getElementById('loading');
+
+            // Disable button and show loading
+            startBtn.disabled = true;
+            startBtn.style.opacity = '0.7';
+            loading.style.display = 'block';
+
+            // Redirect to the analysis page
+            window.location.href = '/analysis';
+        }
+    </script>
+</body>
+
+</html>
+{{end}}
