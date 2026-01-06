@@ -1,40 +1,38 @@
-package jellyfin
+package http
 
 import (
 	"fmt"
-	"jellyfin-duplicate/internal/models"
+	"jellyfin-duplicate/client/jellyfin/models"
+
+	"sync"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
-	"sync"
 )
 
 type Client struct {
-	baseURL string
-	apiKey  string
-	userID  string
-	client  *resty.Client
-	userCache map[string]string // userID -> userName cache
-	cacheMutex sync.Mutex      // mutex to protect cache access
+	baseURL    string
+	apiKey     string
+	userID     string
+	client     *resty.Client
+	userCache  map[string]string // userID -> userName cache
+	cacheMutex sync.Mutex        // mutex to protect cache access
 }
 
-func NewClient(baseURL, apiKey string) *Client {
+func NewClient(baseURL, apiKey string, userID string) *Client {
 	return &Client{
-		baseURL: baseURL,
-		apiKey:  apiKey,
-		client:  resty.New(),
+		baseURL:   baseURL,
+		apiKey:    apiKey,
+		userID:    userID,
+		client:    resty.New(),
 		userCache: make(map[string]string),
 	}
-}
-
-func (c *Client) SetUserID(userID string) error {
-	c.userID = userID
-	return nil
 }
 
 func (c *Client) GetAllMovies() ([]models.Movie, error) {
 	logrus.Info("Fetching all movies from Jellyfin...")
 	var movies []models.Movie
-	
+
 	// Get all libraries first
 	logrus.Debug("Getting libraries...")
 	libraries, err := c.getLibraries()
@@ -42,7 +40,7 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 		return nil, fmt.Errorf("failed to get libraries: %v", err)
 	}
 	logrus.Infof("Found %d libraries", len(libraries))
-	
+
 	// For each library, get movies
 	for _, library := range libraries {
 		logrus.Debugf("Fetching movies from library: %s", library.Name)
@@ -53,45 +51,45 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 		logrus.Infof("Found %d movies in library: %s", len(libraryMovies), library.Name)
 		movies = append(movies, libraryMovies...)
 	}
-	
+
 	logrus.Infof("Total movies fetched: %d", len(movies))
 	return movies, nil
 }
 
-func (c *Client) getLibraries() ([]Library, error) {
+func (c *Client) getLibraries() ([]models.Library, error) {
 	if c.userID == "" {
 		return nil, fmt.Errorf("user ID not set")
 	}
-	
+
 	var result struct {
-		Items []Library `json:"Items"`
+		Items []models.Library `json:"Items"`
 	}
-	
+
 	_, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Views", c.baseURL, c.userID))
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return result.Items, nil
 }
 
 func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) {
 	var allMovies []models.Movie
-	
+
 	// Start with the first page
 	startIndex := 0
 	limit := 100 // Jellyfin's default limit, can be adjusted
-	
+
 	for {
 		var result struct {
-			Items       []models.Movie `json:"Items"`
-			TotalRecordCount int        `json:"TotalRecordCount"`
+			Items            []models.Movie `json:"Items"`
+			TotalRecordCount int            `json:"TotalRecordCount"`
 		}
-		
+
 		_, err := c.client.R().
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetQueryParam("Recursive", "true").
@@ -102,23 +100,23 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 			SetQueryParam("Limit", fmt.Sprintf("%d", limit)).
 			SetResult(&result).
 			Get(fmt.Sprintf("%s/Items", c.baseURL))
-		
+
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Add movies from this page to our collection
 		allMovies = append(allMovies, result.Items...)
-		
+
 		// Check if we've fetched all movies
 		if len(allMovies) >= result.TotalRecordCount {
 			break
 		}
-		
+
 		// Move to the next page
 		startIndex += limit
 	}
-	
+
 	return allMovies, nil
 }
 
@@ -127,23 +125,23 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 func (c *Client) GetAllUsers() ([]models.User, error) {
 	logrus.Info("Fetching all users from Jellyfin...")
 	var users []models.User
-	
+
 	_, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&users).
 		Get(fmt.Sprintf("%s/Users", c.baseURL))
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Populate user cache with all fetched users
 	c.cacheMutex.Lock()
 	for _, user := range users {
 		c.userCache[user.ID] = user.Name
 	}
 	c.cacheMutex.Unlock()
-	
+
 	logrus.Infof("Found %d users and populated user cache", len(users))
 	return users, nil
 }
@@ -157,16 +155,16 @@ func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPl
 			LastPlayedDate        string `json:"LastPlayedDate"`
 		} `json:"UserData"`
 	}
-	
+
 	_, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, userID, movieID))
-	
+
 	if err != nil {
 		return models.UserPlayStatus{}, err
 	}
-	
+
 	return models.UserPlayStatus{
 		UserID:    c.userID,
 		UserName:  "Current User", // Would need to fetch user info separately
@@ -178,17 +176,17 @@ func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPl
 // GetSeenMoviesForUser fetches all movies that a specific user has seen (played)
 func (c *Client) GetSeenMoviesForUser(userID string) ([]models.Movie, error) {
 	var allMovies []models.Movie
-	
+
 	// Start with the first page
 	startIndex := 0
 	limit := 100 // Jellyfin's default limit, can be adjusted
-	
+
 	for {
 		var result struct {
 			Items            []models.Movie `json:"Items"`
-			TotalRecordCount int           `json:"TotalRecordCount"`
+			TotalRecordCount int            `json:"TotalRecordCount"`
 		}
-		
+
 		resp, err := c.client.R().
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetQueryParam("Recursive", "true").
@@ -200,28 +198,28 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.Movie, error) {
 			SetQueryParam("Limit", fmt.Sprintf("%d", limit)).
 			SetResult(&result).
 			Get(fmt.Sprintf("%s/Items", c.baseURL))
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch seen movies for user %s: %v", userID, err)
 		}
-		
+
 		// Debug: Log the raw response if there's an issue
 		if resp.StatusCode() != 200 {
 			return nil, fmt.Errorf("API request failed with status %d for user %s", resp.StatusCode(), userID)
 		}
-		
+
 		// Add movies from this page to our collection
 		allMovies = append(allMovies, result.Items...)
-		
+
 		// Check if we've fetched all movies
 		if len(allMovies) >= result.TotalRecordCount {
 			break
 		}
-		
+
 		// Move to the next page
 		startIndex += limit
 	}
-	
+
 	return allMovies, nil
 }
 
@@ -231,21 +229,21 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]mod
 	userSeenMovies := make(map[string][]models.Movie)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	
+
 	// Limit concurrent goroutines to 5
 	semaphore := make(chan struct{}, 5)
-	
+
 	var errors []error
-	
+
 	for _, user := range users {
 		wg.Add(1)
 		go func(u models.User) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			logrus.Debugf("Fetching seen movies for user: %s", u.Name)
 			seenMovies, err := c.GetSeenMoviesForUser(u.ID)
 			if err != nil {
@@ -254,20 +252,20 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]mod
 				mu.Unlock()
 				return
 			}
-			
+
 			mu.Lock()
 			userSeenMovies[u.ID] = seenMovies
 			mu.Unlock()
 			logrus.Infof("Found %d seen movies for user: %s", len(seenMovies), u.Name)
 		}(user)
 	}
-	
+
 	wg.Wait()
-	
+
 	if len(errors) > 0 {
 		return nil, fmt.Errorf("errors occurred while fetching seen movies: %v", errors)
 	}
-	
+
 	logrus.Infof("Successfully fetched seen movies for all %d users", len(users))
 	return userSeenMovies, nil
 }
@@ -278,21 +276,21 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 	if c.userID == "" {
 		return "", fmt.Errorf("user ID not set for movie name lookup")
 	}
-	
+
 	var result struct {
 		Name string `json:"Name"`
 	}
-	
+
 	_, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData").
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, c.userID, movieID))
-	
+
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Fallback: if Name is empty, try the basic Items endpoint
 	if result.Name == "" {
 		var basicResult struct {
@@ -302,13 +300,13 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetResult(&basicResult).
 			Get(fmt.Sprintf("%s/Items/%s", c.baseURL, movieID))
-		
+
 		if err != nil {
 			return "", err
 		}
 		return basicResult.Name, nil
 	}
-	
+
 	return result.Name, nil
 }
 
@@ -321,64 +319,64 @@ func (c *Client) GetUserName(userID string) (string, error) {
 		return cachedName, nil
 	}
 	c.cacheMutex.Unlock()
-	
+
 	// Cache miss, fetch from API
 	var result struct {
 		Name string `json:"Name"`
 	}
-	
+
 	_, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s", c.baseURL, userID))
-	
+
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Cache the result
 	c.cacheMutex.Lock()
 	c.userCache[userID] = result.Name
 	c.cacheMutex.Unlock()
-	
+
 	return result.Name, nil
 }
 
 // MarkMovieAsPlayed marks a movie as played for a specific user using Jellyfin API
 func (c *Client) MarkMovieAsPlayed(movieID string, userID string, movieName string, userName string) error {
 	logrus.Infof("Marking movie %s (%s) as played for user %s (%s)", movieName, movieID, userName, userID)
-	
+
 	// Jellyfin API endpoint to mark an item as played
 	// Alternative endpoint format that might work better
 	url := fmt.Sprintf("%s/Users/%s/PlayedItems/%s", c.baseURL, userID, movieID)
 	logrus.Debugf("Using URL: %s", url)
-	
+
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetHeader("Content-Type", "application/json").
 		Post(url)
-	
+
 	if err != nil {
 		logrus.Errorf("Network error marking movie as played: %v", err)
 		return fmt.Errorf("failed to mark movie as played: %v", err)
 	}
-	
+
 	// Check response status code
 	statusCode := resp.StatusCode()
 	logrus.Debugf("Jellyfin API response status: %d", statusCode)
-	
+
 	// Debug: Log the full response for troubleshooting
 	if statusCode != 204 && statusCode != 200 {
 		logrus.Warnf("Response body: %s", string(resp.Body()))
 	}
-	
+
 	// Jellyfin API returns 204 No Content on success for this endpoint
 	// Some versions might return 200 OK
 	if statusCode != 204 && statusCode != 200 {
 		logrus.Errorf("Unexpected status code %d when marking movie as played", statusCode)
 		return fmt.Errorf("unexpected status code %d when marking movie as played", statusCode)
 	}
-	
+
 	logrus.Infof("Successfully marked movie %s (%s) as played for user %s (%s)", movieName, movieID, userName, userID)
 	return nil
 }
@@ -386,36 +384,36 @@ func (c *Client) MarkMovieAsPlayed(movieID string, userID string, movieName stri
 // DeleteMovie deletes a movie from Jellyfin using the API
 func (c *Client) DeleteMovie(movieID string) error {
 	logrus.Infof("Deleting movie %s from Jellyfin", movieID)
-	
+
 	// Jellyfin API endpoint to delete an item
 	url := fmt.Sprintf("%s/Items/%s", c.baseURL, movieID)
 	logrus.Debugf("Using delete URL: %s", url)
-	
+
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		Delete(url)
-	
+
 	if err != nil {
 		logrus.Errorf("Network error deleting movie: %v", err)
 		return fmt.Errorf("failed to delete movie: %v", err)
 	}
-	
+
 	// Check response status code
 	statusCode := resp.StatusCode()
 	logrus.Debugf("Jellyfin API delete response status: %d", statusCode)
-	
+
 	// Debug: Log the full response for troubleshooting
 	if statusCode != 204 && statusCode != 200 {
 		logrus.Warnf("Delete response body: %s", string(resp.Body()))
 	}
-	
+
 	// Jellyfin API returns 204 No Content on successful deletion
 	// Some versions might return 200 OK
 	if statusCode != 204 && statusCode != 200 {
 		logrus.Errorf("Unexpected status code %d when deleting movie", statusCode)
 		return fmt.Errorf("unexpected status code %d when deleting movie", statusCode)
 	}
-	
+
 	logrus.Infof("Successfully deleted movie %s from Jellyfin", movieID)
 	return nil
 }
@@ -427,7 +425,7 @@ func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.Movie, user
 	for _, movie := range allMovies {
 		movieMap[movie.ID] = movie
 	}
-	
+
 	// For each user, mark their seen movies
 	for _, user := range users {
 		seenMovies, ok := userSeenMovies[user.ID]
@@ -444,13 +442,13 @@ func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.Movie, user
 			}
 			continue
 		}
-		
+
 		// Create a map of seen movie IDs for this user
 		seenMovieIDs := make(map[string]bool)
 		for _, seenMovie := range seenMovies {
 			seenMovieIDs[seenMovie.ID] = true
 		}
-		
+
 		// Update play status for each movie
 		for movieID, movie := range movieMap {
 			if seenMovieIDs[movieID] {
@@ -474,17 +472,12 @@ func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.Movie, user
 			movieMap[movieID] = movie
 		}
 	}
-	
+
 	// Convert map back to slice
 	var moviesWithPlayStatus []models.Movie
 	for _, movie := range movieMap {
 		moviesWithPlayStatus = append(moviesWithPlayStatus, movie)
 	}
-	
-	return moviesWithPlayStatus, nil
-}
 
-type Library struct {
-	ID   string `json:"Id"`
-	Name string `json:"Name"`
+	return moviesWithPlayStatus, nil
 }
