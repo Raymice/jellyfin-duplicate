@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"jellyfin-duplicate/client/jellyfin/models"
 	"strings"
@@ -35,7 +36,7 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 
 	// Get all libraries first
 	logrus.Debug("Getting libraries...")
-	libraries, err := c.getLibraries()
+	libraries, err := c.GetLibraries()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries: %v", err)
 	}
@@ -97,24 +98,41 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 	return movies, nil
 }
 
-func (c *Client) getLibraries() ([]models.Library, error) {
+func (c *Client) GetLibraries() ([]models.Library, error) {
 	if c.userID == "" {
 		return nil, fmt.Errorf("user ID not set")
 	}
 
+	resp, err := c.client.R().
+		SetHeader("X-MediaBrowser-Token", c.apiKey).
+		Get(fmt.Sprintf("%s/Users/%s/Views", c.baseURL, c.userID))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to call Jellyfin API for libraries: %v", err)
+	}
+
+	// Check for non-200 status codes
+	if resp.StatusCode() != 200 {
+		return nil, fmt.Errorf("Jellyfin API returned status code %d when fetching libraries", resp.StatusCode())
+	}
+
+	// Parse the JSON response manually
 	var result struct {
 		Items []models.Library `json:"Items"`
 	}
 
-	_, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
-		SetResult(&result).
-		Get(fmt.Sprintf("%s/Users/%s/Views", c.baseURL, c.userID))
-
+	err = json.Unmarshal(resp.Body(), &result)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse Jellyfin API response: %v", err)
 	}
 
+	// Check if the response contains valid data
+	if result.Items == nil {
+		logrus.Errorf("Jellyfin API returned empty or invalid library data")
+		return nil, fmt.Errorf("Jellyfin API returned empty or invalid library data")
+	}
+
+	logrus.Debugf("Successfully fetched %d libraries from Jellyfin", len(result.Items))
 	return result.Items, nil
 }
 

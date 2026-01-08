@@ -1,95 +1,170 @@
 {{define "home.html"}}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <title>Jellyfin Duplicate Finder</title>
     <style>
+        :root {
+            /* Jellyfin theme colors */
+            --primary-color: #00a4dc;
+            --primary-hover: #0086b3;
+            --accent-color: #00a4dc;
+            --background-dark: #0f1219;
+            --background-medium: #1e2738;
+            --background-light: #2e445e;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-primary);
             margin: 0;
             padding: 0;
-            background-color: #f9f9f9;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            transition: all 0.3s ease;
         }
 
         .container {
             text-align: center;
-            background-color: white;
+            background-color: var(--background-medium);
             padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
             width: 90%;
+            animation: fadeIn 0.8s ease-out;
+            border: 1px solid var(--primary-color);
         }
 
-        h1 {
-            color: #4CAF50;
-            margin-bottom: 30px;
-            font-size: 2em;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .logo {
             width: 120px;
             height: 120px;
             margin: 0 auto 30px;
-            background-color: #4CAF50;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             color: white;
-            font-size: 2em;
+            font-size: 3em;
             font-weight: bold;
+            box-shadow: 0 8px 20px rgba(0, 164, 220, 0.3);
+            border: 3px solid var(--background-dark);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 2.5em;
+            color: var(--primary-color);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            letter-spacing: 0.5px;
         }
 
         .description {
-            color: #666;
+            color: var(--text-secondary);
             margin-bottom: 30px;
             font-size: 1.1em;
-            line-height: 1.6;
+            line-height: 1.8;
+            padding: 0 20px;
         }
 
         .start-btn {
-            padding: 15px 30px;
-            background-color: #4CAF50;
-            color: white;
+            padding: 18px 40px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: var(--background-dark);
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1.2em;
             font-weight: bold;
             transition: all 0.3s;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 15px rgba(0, 164, 220, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
         }
 
         .start-btn:hover {
-            background-color: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 164, 220, 0.4);
+            background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
         }
 
         .start-btn:active {
-            transform: translateY(0);
+            transform: translateY(-1px);
+        }
+
+        .start-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%, -50%);
+            transform-origin: 50% 50%;
+        }
+
+        .start-btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
         }
 
         .loading {
             display: none;
-            margin-top: 20px;
-            color: #666;
+            margin-top: 30px;
+            color: var(--text-secondary);
         }
 
         .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #4CAF50;
+            border: 4px solid var(--background-light);
+            border-top: 4px solid var(--primary-color);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            margin: 0 auto 15px;
         }
 
         @keyframes spin {
@@ -99,21 +174,54 @@
 
         .footer {
             margin-top: 30px;
-            color: #999;
+            color: var(--text-secondary);
             font-size: 0.9em;
+            padding: 0 20px;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer a:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+                width: 95%;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .start-btn {
+                padding: 15px 30px;
+                font-size: 1.1em;
+            }
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
+
+
     <div class="container">
         <div class="logo">
             🎬
         </div>
-        <h1>Jellyfin Duplicate Finder</h1>
+        <h1>JELLYFIN DUPLICATE FINDER</h1>
+        <p class="subtitle">Find and manage duplicate movies in your Jellyfin library</p>
         <p class="description">
-            Find and manage duplicate movies in your Jellyfin library.
-            Click the button below to start analyzing your collection.
+            This tool helps you identify duplicate movies in your Jellyfin library and manage play status discrepancies.
+            Click the button below to start analyzing your collection for potential duplicates.
         </p>
         <button class="start-btn" id="start-btn" onclick="startAnalysis()">
             🔍 Start Analysis
@@ -121,9 +229,10 @@
         <div class="loading" id="loading">
             <div class="loader"></div>
             <p>Analyzing your library...</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">This may take a moment for large libraries</p>
         </div>
         <div class="footer">
-            <p>This tool helps you identify duplicate movies and manage play status discrepancies.</p>
+            <p>Built for Jellyfin media servers | <a href="https://jellyfin.org" target="_blank">Learn more about Jellyfin</a></p>
         </div>
     </div>
 
@@ -140,6 +249,8 @@
             // Redirect to the analysis page
             window.location.href = '/analysis';
         }
+
+
     </script>
 </body>
 
