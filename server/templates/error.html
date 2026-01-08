@@ -1,16 +1,272 @@
 {{define "error.html"}}
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Error</title>
+    <title>Error - Jellyfin Duplicate Finder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .error { color: red; }
+        :root {
+            /* Jellyfin theme colors */
+            --primary-color: #00a4dc;
+            --primary-hover: #0086b3;
+            --accent-color: #00a4dc;
+            --background-dark: #0f1219;
+            --background-medium: #1e2738;
+            --background-light: #2e445e;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --danger-color: #f44336;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            text-align: center;
+            background-color: var(--background-medium);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 95%;
+            animation: fadeIn 0.8s ease-out;
+            border: 1px solid var(--danger-color);
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, var(--danger-color), #c82333);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 3em;
+            font-weight: bold;
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+            border: 3px solid var(--background-dark);
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 2.5em;
+            color: var(--danger-color);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            letter-spacing: 0.5px;
+        }
+
+        .error-message {
+            background-color: var(--background-dark);
+            border-left: 4px solid var(--danger-color);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px auto;
+            text-align: left;
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: var(--text-primary);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.6s ease-out;
+            width: calc(100% - 20px);
+            max-width: 1100px;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .error-details {
+            color: var(--text-secondary);
+            margin-top: 20px;
+            font-size: 0.95em;
+            font-style: italic;
+        }
+
+        .home-btn {
+            padding: 18px 40px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: var(--background-dark);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 6px 15px rgba(0, 164, 220, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 25px;
+        }
+
+        .home-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 164, 220, 0.4);
+            background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+        }
+
+        .home-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .home-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%, -50%);
+            transform-origin: 50% 50%;
+        }
+
+        .home-btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
+        }
+
+        .footer {
+            margin-top: 30px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            padding: 0 20px;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer a:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                width: 98%;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .home-btn {
+                padding: 15px 30px;
+                font-size: 1.1em;
+            }
+
+            .error-message {
+                padding: 20px;
+                font-size: 1em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .subtitle {
+                font-size: 1em;
+            }
+
+            .home-btn {
+                padding: 12px 24px;
+                font-size: 1em;
+            }
+        }
     </style>
 </head>
+
 <body>
-    <h1>Error</h1>
-    <div class="error">{{.error}}</div>
+    <div class="container">
+        <div class="logo">
+            ❌
+        </div>
+        <h1>ERROR OCCURRED</h1>
+        <p class="subtitle">Something went wrong with the Jellyfin Duplicate Finder</p>
+        
+        <div class="error-message">
+            <strong>Error Details:</strong><br>
+            {{.error}}
+        </div>
+
+        <p class="error-details">
+            We apologize for the inconvenience. This error has been logged and will be investigated.
+        </p>
+
+        <button class="home-btn" onclick="window.location.href = '/'">
+            🏠 Return to Home
+        </button>
+
+        <div class="footer">
+            <p>Built for Jellyfin media servers | <a href="https://jellyfin.org" target="_blank">Learn more about Jellyfin</a></p>
+        </div>
+    </div>
 </body>
 </html>
 {{end}}
