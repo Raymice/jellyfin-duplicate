@@ -11,6 +11,46 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// HTTP Status Code Descriptions for better error messages
+var httpStatusDescriptions = map[int]string{
+	200: "OK",
+	201: "Created",
+	204: "No Content",
+	400: "Bad Request",
+	401: "Unauthorized",
+	403: "Forbidden",
+	404: "Not Found",
+	408: "Request Timeout",
+	500: "Internal Server Error",
+	502: "Bad Gateway",
+	503: "Service Unavailable",
+	504: "Gateway Timeout",
+}
+
+// checkHTTPResponse checks the HTTP response status code and returns an error if not successful
+func checkHTTPResponse(resp *resty.Response, expectedStatusCodes ...int) error {
+	statusCode := resp.StatusCode()
+	
+	// Check if status code is in the expected list
+	for _, expectedCode := range expectedStatusCodes {
+		if statusCode == expectedCode {
+			return nil // Success
+		}
+	}
+	
+	// Get status description
+	description := httpStatusDescriptions[statusCode]
+	if description == "" {
+		description = "Unknown Status"
+	}
+	
+	// Log the error with response details
+	logrus.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
+	logrus.Debugf("Response body: %s", string(resp.Body()))
+	
+	return fmt.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
+}
+
 type Client struct {
 	baseURL    string
 	apiKey     string
@@ -111,9 +151,10 @@ func (c *Client) GetLibraries() ([]models.Library, error) {
 		return nil, fmt.Errorf("failed to call Jellyfin API for libraries: %v", err)
 	}
 
-	// Check for non-200 status codes
-	if resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("Jellyfin API returned status code %d when fetching libraries", resp.StatusCode())
+	// Check HTTP status code using our helper function
+	err = checkHTTPResponse(resp, 200)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch libraries: %v", err)
 	}
 
 	// Parse the JSON response manually
@@ -149,7 +190,7 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 			TotalRecordCount int            `json:"TotalRecordCount"`
 		}
 
-		_, err := c.client.R().
+		resp, err := c.client.R().
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetQueryParam("Recursive", "true").
 			SetQueryParam("IncludeItemTypes", "Movie").
@@ -161,7 +202,13 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 			Get(fmt.Sprintf("%s/Items", c.baseURL))
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to call Jellyfin API for movies in library %s: %v", libraryID, err)
+		}
+
+		// Check HTTP status code
+		err = checkHTTPResponse(resp, 200)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch movies from library %s: %v", libraryID, err)
 		}
 
 		// Add movies from this page to our collection
@@ -185,13 +232,19 @@ func (c *Client) GetAllUsers() ([]models.User, error) {
 	logrus.Info("Fetching all users from Jellyfin...")
 	var users []models.User
 
-	_, err := c.client.R().
+	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&users).
 		Get(fmt.Sprintf("%s/Users", c.baseURL))
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to call Jellyfin API for users: %v", err)
+	}
+
+	// Check HTTP status code
+	err = checkHTTPResponse(resp, 200)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users: %v", err)
 	}
 
 	// Populate user cache with all fetched users
@@ -215,13 +268,19 @@ func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPl
 		} `json:"UserData"`
 	}
 
-	_, err := c.client.R().
+	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, userID, movieID))
 
 	if err != nil {
-		return models.UserPlayStatus{}, err
+		return models.UserPlayStatus{}, fmt.Errorf("failed to call Jellyfin API for user play status: %v", err)
+	}
+
+	// Check HTTP status code
+	err = checkHTTPResponse(resp, 200)
+	if err != nil {
+		return models.UserPlayStatus{}, fmt.Errorf("failed to fetch user play status: %v", err)
 	}
 
 	return models.UserPlayStatus{
@@ -340,14 +399,20 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 		Name string `json:"Name"`
 	}
 
-	_, err := c.client.R().
+	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData").
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, c.userID, movieID))
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to call Jellyfin API for movie name: %v", err)
+	}
+
+	// Check HTTP status code
+	err = checkHTTPResponse(resp, 200)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch movie name: %v", err)
 	}
 
 	// Fallback: if Name is empty, try the basic Items endpoint
@@ -355,14 +420,21 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 		var basicResult struct {
 			Name string `json:"Name"`
 		}
-		_, err := c.client.R().
+		resp, err := c.client.R().
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetResult(&basicResult).
 			Get(fmt.Sprintf("%s/Items/%s", c.baseURL, movieID))
 
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to call Jellyfin API for movie name (fallback): %v", err)
 		}
+
+		// Check HTTP status code for fallback
+		err = checkHTTPResponse(resp, 200)
+		if err != nil {
+			return "", fmt.Errorf("failed to fetch movie name (fallback): %v", err)
+		}
+
 		return basicResult.Name, nil
 	}
 
@@ -384,13 +456,19 @@ func (c *Client) GetUserName(userID string) (string, error) {
 		Name string `json:"Name"`
 	}
 
-	_, err := c.client.R().
+	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s", c.baseURL, userID))
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to call Jellyfin API for user name: %v", err)
+	}
+
+	// Check HTTP status code
+	err = checkHTTPResponse(resp, 200)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch user name: %v", err)
 	}
 
 	// Cache the result
