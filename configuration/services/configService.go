@@ -43,7 +43,7 @@ func loadEnv() conf_models.Config {
 	}
 
 	// Check required environment variables
-	requiredVars := []string{constants.EnvJellyfinURL, constants.EnvJellyfinAPIKey, constants.EnvJellyfinUserID, constants.EnvEnvironment}
+	requiredVars := []string{constants.EnvJellyfinURL, constants.EnvJellyfinAPIKey, constants.EnvJellyfinAdminUserID, constants.EnvEnvironment}
 	for _, v := range requiredVars {
 		if os.Getenv(v) == "" {
 			logrus.Fatalf("Environment variable %s not set", v)
@@ -62,7 +62,7 @@ func loadEnv() conf_models.Config {
 		Jellyfin: conf_models.JellyfinConfig{
 			URL:    os.Getenv(constants.EnvJellyfinURL),
 			APIKey: os.Getenv(constants.EnvJellyfinAPIKey),
-			UserID: os.Getenv(constants.EnvJellyfinUserID),
+			UserID: os.Getenv(constants.EnvJellyfinAdminUserID),
 		},
 	}
 }

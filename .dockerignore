@@ -1,0 +1,46 @@
+# Ignore files that are not needed in the Docker image
+
+# Git files
+.git
+.gitignore
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+out/
+
+# Local development files
+env
+.env
+.env.local
+.env.*
+*.env
+
+# Logs and runtime data
+logs
+*.log
+tmp
+
+# Documentation
+README.md
+LICENSE
+
+# Configuration files (we'll copy specific ones)
+config.dev.json
+
+# Docker files (to avoid recursion)
+Dockerfile
+.dockerignore
+
+# Dependency directories
+node_modules/
+vendor/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
