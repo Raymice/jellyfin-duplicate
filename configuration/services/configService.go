@@ -13,22 +13,26 @@ import (
 
 func getConfigPath(environment constants.Environment) (path string) {
 
+	configurationDir := "configuration/files"
+	prodFile := "config.prod.json"
+	devFile := "config.dev.json"
+
 	switch environment {
 	case constants.Development:
 
-		if _, err := os.Stat("config.dev.json"); err == nil {
-			path = "config.dev.json"
+		if _, err := os.Stat(configurationDir + "/" + devFile); err == nil {
+			path = configurationDir + "/" + devFile
 			return
 		} else {
-			logrus.Fatalf("config.dev.json file not found")
+			logrus.Fatalf("%s file not found", devFile)
 		}
 
 	case constants.Production:
-		if _, err := os.Stat("config.prod.json"); err == nil {
-			path = "config.prod.json"
+		if _, err := os.Stat(configurationDir + "/" + prodFile); err == nil {
+			path = configurationDir + "/" + prodFile
 			return
 		} else {
-			logrus.Fatalf("config.prod.json file not found")
+			logrus.Fatalf("%s file not found", prodFile)
 		}
 	default:
 		logrus.Fatalf("Invalid environment variable: %s", environment)
