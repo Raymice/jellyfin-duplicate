@@ -18,26 +18,26 @@ A Go application that helps you safely identify and remove duplicate movies from
 
 ## Installation
 
-### Native Installation
-
-1. Clone this repository
-2. Install dependencies:
-
-   ```bash
-   go mod download
-   ```
-
-3. Create **.env** file (look at .env.example)
-
-4. Build the application:
-
-   ```bash
-   go build -o jellyfin-duplicate .
-   ```
-
 ### Docker Installation
 
-### Using Docker Hub
+#### Using Docker Compose (Recommended)
+
+1. Start the container:
+
+   ```yaml
+   jellyfin-duplicate:
+      image: raymice/jellyfin-duplicate:latest
+      container_name: jellyfin-duplicate
+      ports:
+         - "8080:8080"
+      environment:
+         - JELLYFIN_URL=${JELLYFIN_URL}
+         - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
+         - JELLYFIN_ADMIN_USER_ID=${JELLYFIN_ADMIN_USER_ID}
+      restart: unless-stopped
+   ```
+
+#### Using Docker Hub
 
 1. Run the container:
 
@@ -51,19 +51,7 @@ A Go application that helps you safely identify and remove duplicate movies from
      raymice/jellyfin-duplicate:latest
    ```
 
-### Using Docker Compose (Recommended)
-
-1. Update environment variables of **docker-compose.yml** file
-
-2. Start the container:
-
-   ```bash
-   docker-compose up -d
-   ```
-
-### Building from Source
-
-#### Using Docker Directly
+#### Using Source Code
 
 1. Build the Docker image:
 
@@ -104,6 +92,23 @@ A Go application that helps you safely identify and remove duplicate movies from
      jellyfin-duplicate
    ```
 
+### Native Installation / Development
+
+1. Clone this repository
+2. Install dependencies:
+
+   ```bash
+   go mod download
+   ```
+
+3. Create **.env** file (look at .env.example)
+
+4. Run the application:
+
+   ```bash
+   go run main.go
+   ```
+
 ## Configuration
 
 The application need to be configured using environment variables:
@@ -114,14 +119,6 @@ The application need to be configured using environment variables:
 
 ## Usage
 
-### Native Usage
-
-Run the application:
-
-```bash
-./jellyfin-duplicate
-```
-
 Access the web interface at: `http://localhost:8080`
 
 **Available endpoints:**
@@ -129,10 +126,6 @@ Access the web interface at: `http://localhost:8080`
 - Web interface: `http://localhost:8080` - Interactive duplicate analysis
 
 - Analysis page: `http://localhost:8080/analysis` - Detailed results with play status
-
-### Docker Usage
-
-After starting the container, access the web interface at: `http://localhost:8080`
 
 ## How It Works
 
