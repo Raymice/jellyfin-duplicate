@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   jellyfin-duplicate:
-    build: .
+    image: raymice/jellyfin-duplicate:latest
     container_name: jellyfin-duplicate
     ports:
       - "8080:8080"
@@ -10,10 +8,4 @@ services:
       - JELLYFIN_URL=${JELLYFIN_URL}
       - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
       - JELLYFIN_ADMIN_USER_ID=${JELLYFIN_ADMIN_USER_ID}
-      - ENVIRONMENT=production
     restart: unless-stopped
-    volumes:
-      - ./config.prod.json:/app/config.prod.json:ro
-    # Uncomment the following lines if you want to use a custom config file
-    # volumes:
-    #   - ./custom-config.json:/app/config.prod.json:ro

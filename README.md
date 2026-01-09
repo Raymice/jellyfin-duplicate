@@ -37,7 +37,21 @@ A Go application that helps you safely identify and remove duplicate movies from
 
 ### Docker Installation
 
-#### Using Docker Compose (Recommended)
+### Using Docker Hub
+
+1. Run the container:
+
+   ```bash
+   docker run -d \
+     -p 8080:8080 \
+     -e JELLYFIN_URL="your-jellyfin-url" \
+     -e JELLYFIN_API_KEY="your-api-key" \
+     -e JELLYFIN_ADMIN_USER_ID="your-user-id" \
+     --name jellyfin-duplicate \
+     raymice/jellyfin-duplicate:latest
+   ```
+
+### Using Docker Compose (Recommended)
 
 1. Update environment variables of **docker-compose.yml** file
 
@@ -46,6 +60,8 @@ A Go application that helps you safely identify and remove duplicate movies from
    ```bash
    docker-compose up -d
    ```
+
+### Building from Source
 
 #### Using Docker Directly
 
