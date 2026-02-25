@@ -30,24 +30,24 @@ var httpStatusDescriptions = map[int]string{
 // checkHTTPResponse checks the HTTP response status code and returns an error if not successful
 func checkHTTPResponse(resp *resty.Response, expectedStatusCodes ...int) error {
 	statusCode := resp.StatusCode()
-	
+
 	// Check if status code is in the expected list
 	for _, expectedCode := range expectedStatusCodes {
 		if statusCode == expectedCode {
 			return nil // Success
 		}
 	}
-	
+
 	// Get status description
 	description := httpStatusDescriptions[statusCode]
 	if description == "" {
 		description = "Unknown Status"
 	}
-	
+
 	// Log the error with response details
 	logrus.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
 	logrus.Debugf("Response body: %s", string(resp.Body()))
-	
+
 	return fmt.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
 }
 
@@ -194,7 +194,7 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetQueryParam("Recursive", "true").
 			SetQueryParam("IncludeItemTypes", "Movie").
-			SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData").
+			SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData,MediaStreams").
 			SetQueryParam("ParentId", libraryID).
 			SetQueryParam("StartIndex", fmt.Sprintf("%d", startIndex)).
 			SetQueryParam("Limit", fmt.Sprintf("%d", limit)).
@@ -309,7 +309,7 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.Movie, error) {
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
 			SetQueryParam("Recursive", "true").
 			SetQueryParam("IncludeItemTypes", "Movie").
-			SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData").
+			SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData,MediaStreams").
 			SetQueryParam("Filters", "IsPlayed").
 			SetQueryParam("UserId", userID).
 			SetQueryParam("StartIndex", fmt.Sprintf("%d", startIndex)).
@@ -401,7 +401,7 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
-		SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData").
+		SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData,MediaStreams").
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, c.userID, movieID))
 
