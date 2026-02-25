@@ -1317,8 +1317,26 @@
                             </button>
                             {{end}}
                         </div>
-                        <div class="path-label">Path:</div>
-                        <div class="movie-path">{{$dup.Movie1.Path}}</div>
+                        <div class="movie-path">
+                            <span>📍 Path: {{$dup.Movie1.Path}}</span>
+                            {{if $dup.Movie1.MediaStreams}}
+                            <div>
+                                {{range $dup.Movie1.MediaStreams}}
+                                <div>
+                                    {{if eq (.Type) "Audio"}}
+                                    <span>🔊 Audio Stream: {{.DisplayTitle}}</span>
+                                    {{end}}
+                                    {{if eq (.Type) "Video"}}
+                                    <span>🎥 Video Stream: {{.DisplayTitle}}</span>
+                                    {{end}}
+                                    {{if eq (.Type) "Subtitle"}}
+                                    <span>💬 Subtitle Stream: {{.DisplayTitle}}</span>
+                                    {{end}}
+                                </div>
+                                {{end}}
+                            </div>
+                            {{end}}
+                        </div>
                         {{if $dup.Movie1.UserPlayStatuses}}
                         <div class="multi-user-status">
                             <span class="status-label">Seen by:</span>
@@ -1344,8 +1362,26 @@
                             </button>
                             {{end}}
                         </div>
-                        <div class="path-label">Path:</div>
-                        <div class="movie-path">{{$dup.Movie2.Path}}</div>
+                        <div class="movie-path">
+                            <span>📍 Path: {{$dup.Movie2.Path}}</span>
+                            {{if $dup.Movie2.MediaStreams}}
+                            <div>
+                                {{range $dup.Movie2.MediaStreams}}
+                                <div>
+                                    {{if eq (.Type) "Audio"}}
+                                    <span>🔊 Audio Stream: {{.DisplayTitle}}</span>
+                                    {{end}}
+                                    {{if eq (.Type) "Video"}}
+                                    <span>🎥 Video Stream: {{.DisplayTitle}}</span>
+                                    {{end}}
+                                    {{if eq (.Type) "Subtitle"}}
+                                    <span>💬 Subtitle Stream: {{.DisplayTitle}}</span>
+                                    {{end}}
+                                </div>
+                                {{end}}
+                            </div>
+                            {{end}}
+                        </div>
                         {{if $dup.Movie2.UserPlayStatuses}}
                         <div class="multi-user-status">
                             <span class="status-label">Seen by:</span>
@@ -1416,13 +1452,49 @@
                         <div class="duplicate-pair mismatch">
                             <div class="movie-info">
                                 <div class="movie-name">{{.Movie1.Name}} ({{.Movie1.ProductionYear}})</div>
-                                <div class="path-label">Path:</div>
-                                <div class="movie-path">{{.Movie1.Path}}</div>
+                                <div class="movie-path">
+                                    <span>📍 Path: {{.Movie1.Path}}</span>
+                                    {{if .Movie1.MediaStreams}}
+                                    <div>
+                                        {{range .Movie1.MediaStreams}}
+                                        <div>
+                                            {{if eq (.Type) "Audio"}}
+                                            <span>🔊 Audio Stream: {{.DisplayTitle}}</span>
+                                            {{end}}
+                                            {{if eq (.Type) "Video"}}
+                                            <span>🎥 Video Stream: {{.DisplayTitle}}</span>
+                                            {{end}}
+                                            {{if eq (.Type) "Subtitle"}}
+                                            <span>💬 Subtitle Stream: {{.DisplayTitle}}</span>
+                                            {{end}}
+                                        </div>
+                                        {{end}}
+                                    </div>
+                                    {{end}}
+                                </div>
                             </div>
                             <div class="movie-info">
                                 <div class="movie-name">{{.Movie2.Name}} ({{.Movie2.ProductionYear}})</div>
-                                <div class="path-label">Path:</div>
-                                <div class="movie-path">{{.Movie2.Path}}</div>
+                                <div class="movie-path">
+                                    <span>📍 Path: {{.Movie2.Path}}</span>
+                                    {{if .Movie2.MediaStreams}}
+                                    <div>
+                                        {{range .Movie2.MediaStreams}}
+                                        <div>
+                                            {{if eq (.Type) "Audio"}}
+                                            <span>🔊 Audio Stream: {{.DisplayTitle}}</span>
+                                            {{end}}
+                                            {{if eq (.Type) "Video"}}
+                                            <span>🎥 Video Stream: {{.DisplayTitle}}</span>
+                                            {{end}}
+                                            {{if eq (.Type) "Subtitle"}}
+                                            <span>💬 Subtitle Stream: {{.DisplayTitle}}</span>
+                                            {{end}}
+                                        </div>
+                                        {{end}}
+                                    </div>
+                                    {{end}}
+                                </div>
                             </div>
                             <div class="path-comparison">
                                 Path similarity: <span

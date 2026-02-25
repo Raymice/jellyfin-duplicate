@@ -17,6 +17,12 @@ type Movie struct {
 		Imdb string `json:"Imdb"`
 	} `json:"ProviderIds"`
 	UserPlayStatuses []UserPlayStatus `json:"UserPlayStatuses"`
+	MediaStreams     []MediaStreams   `json:"MediaStreams"`
+}
+
+type MediaStreams struct {
+	DisplayTitle string `json:"DisplayTitle"`
+	Type         string `json:"Type"`
 }
 
 type UserPlayStatus struct {
