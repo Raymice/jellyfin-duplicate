@@ -1,5 +1,12 @@
 # Jellyfin Duplicate Finder
 
+
+![GitHub branch check runs](https://img.shields.io/github/check-runs/Raymice/jellyfin-duplicate/main)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Raymice/jellyfin-duplicate/docker-build-push.yml)
+![GitHub Tag](https://img.shields.io/github/v/tag/Raymice/jellyfin-duplicate)
+![Docker Pulls](https://img.shields.io/docker/pulls/raymice/jellyfin-duplicate)
+---
+
 **Intelligent duplicate movie detection with multi-user play status analysis**
 
 A Go application that helps you safely identify and remove duplicate movies from your Jellyfin server while preserving user watch history. The application analyzes movie metadata, file paths, and play status across all users to provide intelligent recommendations for safe duplicate removal.
