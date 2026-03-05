@@ -233,11 +233,10 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.MovieLightAPI,
 	return allMovies, nil
 }
 
-// GetUserPlayStatus fetches play status for a specific movie and user
 // GetAllUsers fetches all users from Jellyfin and populates the user cache
-func (c *Client) GetAllUsers() ([]models.User, error) {
+func (c *Client) GetAllUsers() ([]models.UserAPI, error) {
 	logrus.Info("Fetching all users from Jellyfin...")
-	var users []models.User
+	var users []models.UserAPI
 
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
@@ -265,7 +264,7 @@ func (c *Client) GetAllUsers() ([]models.User, error) {
 	return users, nil
 }
 
-func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPlayStatus, error) {
+func (c *Client) GetMovieUserData(movieID string, userID string) (models.UserDataAPI, error) {
 	var result models.UserDataAPI
 
 	resp, err := c.client.R().
@@ -275,21 +274,16 @@ func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPl
 		Get(fmt.Sprintf("%s/UserItems/%s/UserData", c.baseURL, movieID))
 
 	if err != nil {
-		return models.UserPlayStatus{}, fmt.Errorf("failed to call Jellyfin API for user play status: %v", err)
+		return models.UserDataAPI{}, fmt.Errorf("failed to call Jellyfin API for user play status: %v", err)
 	}
 
 	// Check HTTP status code
 	err = checkHTTPResponse(resp, 200)
 	if err != nil {
-		return models.UserPlayStatus{}, fmt.Errorf("failed to fetch user play status: %v", err)
+		return models.UserDataAPI{}, fmt.Errorf("failed to fetch user play status: %v", err)
 	}
 
-	return models.UserPlayStatus{
-		UserID:    c.userID,
-		UserName:  "Current User", // Would need to fetch user info separately
-		Played:    result.Played,
-		PlayCount: result.PlayCount,
-	}, nil
+	return result, nil
 }
 
 func (c *Client) GetMovieDetails(movieID string) (models.MovieLightExtendedAPI, error) {
@@ -369,7 +363,7 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.MovieLightAPI, er
 }
 
 // GetSeenMoviesForAllUsers fetches seen movies for all users in parallel (max 5 concurrent)
-func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]models.MovieLightAPI, error) {
+func (c *Client) GetSeenMoviesForAllUsers(users []models.UserAPI) (map[string][]models.MovieLightAPI, error) {
 	logrus.Infof("Fetching seen movies for %d users in parallel...", len(users))
 	userSeenMovies := make(map[string][]models.MovieLightAPI)
 	var mu sync.Mutex
@@ -382,7 +376,7 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]mod
 
 	for _, user := range users {
 		wg.Add(1)
-		go func(u models.User) {
+		go func(u models.UserAPI) {
 			defer wg.Done()
 
 			// Acquire semaphore
@@ -580,71 +574,4 @@ func (c *Client) DeleteMovie(movieID string) error {
 
 	logrus.Infof("Successfully deleted movie %s from Jellyfin", movieID)
 	return nil
-}
-
-// ReconcilePlayStatusWithAllMovies reconciles seen movies with all movies to create play status
-func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.MovieLightAPI, userSeenMovies map[string][]models.MovieLightAPI, users []models.User) ([]models.MovieLightStatus, error) {
-	// Create a map of all movies by ID for quick lookup
-	movieMap := make(map[string]models.MovieLightStatus)
-	for _, movie := range allMovies {
-		movieMap[movie.ID] = models.MovieLightStatus{
-			MovieLightAPI:    movie,
-			UserPlayStatuses: []models.UserPlayStatus{},
-		}
-	}
-
-	// For each user, mark their seen movies
-	for _, user := range users {
-		seenMovies, ok := userSeenMovies[user.ID]
-		if !ok {
-			// User has no seen movies, mark all movies as not seen
-			for movieID, movie := range movieMap {
-				playStatus := models.UserPlayStatus{
-					UserID:   user.ID,
-					UserName: user.Name,
-					Played:   false,
-				}
-				movie.UserPlayStatuses = append(movie.UserPlayStatuses, playStatus)
-				movieMap[movieID] = movie
-			}
-			continue
-		}
-
-		// Create a map of seen movie IDs for this user
-		seenMovieIDs := make(map[string]bool)
-		for _, seenMovie := range seenMovies {
-			seenMovieIDs[seenMovie.ID] = true
-		}
-
-		// Update play status for each movie
-		for movieID, movie := range movieMap {
-			if seenMovieIDs[movieID] {
-				// Movie is seen by this user, update play status
-				playStatus := models.UserPlayStatus{
-					UserID:   user.ID,
-					UserName: user.Name,
-					Played:   true,
-					// Note: PlayCount would need to be fetched separately if needed
-				}
-				movie.UserPlayStatuses = append(movie.UserPlayStatuses, playStatus)
-			} else {
-				// Movie is NOT seen by this user, update play status
-				playStatus := models.UserPlayStatus{
-					UserID:   user.ID,
-					UserName: user.Name,
-					Played:   false,
-				}
-				movie.UserPlayStatuses = append(movie.UserPlayStatuses, playStatus)
-			}
-			movieMap[movieID] = movie
-		}
-	}
-
-	// Convert map back to slice
-	var moviesWithPlayStatus []models.MovieLightStatus
-	for _, movie := range movieMap {
-		moviesWithPlayStatus = append(moviesWithPlayStatus, movie)
-	}
-
-	return moviesWithPlayStatus, nil
 }
