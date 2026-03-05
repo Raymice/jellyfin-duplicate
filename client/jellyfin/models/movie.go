@@ -1,28 +1,60 @@
 package models
 
-type Movie struct {
-	ID             string         `json:"Id"`
-	Name           string         `json:"Name"`
-	Path           string         `json:"Path"`
-	ProductionYear int            `json:"ProductionYear"`
-	PlayStatus     UserPlayStatus `json:"PlayStatus"`
-	UserData       struct {
-		Played                bool   `json:"Played"`
-		PlaybackPositionTicks int64  `json:"PlaybackPositionTicks"`
-		PlayCount             int    `json:"PlayCount"`
-		LastPlayedDate        string `json:"LastPlayedDate"`
-	} `json:"UserData"`
-	ProviderIds struct {
-		Tmdb string `json:"Tmdb"`
-		Imdb string `json:"Imdb"`
-	} `json:"ProviderIds"`
-	UserPlayStatuses []UserPlayStatus `json:"UserPlayStatuses"`
-	MediaStreams     []MediaStreams   `json:"MediaStreams"`
+type MovieXtLightAPI struct {
+	ID             string `json:"Id"`
+	Name           string `json:"Name"`
+	ProductionYear int    `json:"ProductionYear"`
 }
 
-type MediaStreams struct {
+type MovieLightAPI struct {
+	MovieXtLightAPI
+	Path string `json:"Path"`
+}
+
+type UserDataAPI struct {
+	Played                bool   `json:"Played"`
+	PlaybackPositionTicks int64  `json:"PlaybackPositionTicks"`
+	PlayCount             int    `json:"PlayCount"`
+	LastPlayedDate        string `json:"LastPlayedDate"`
+}
+
+type MediaStreamsAPI struct {
 	DisplayTitle string `json:"DisplayTitle"`
 	Type         string `json:"Type"`
+}
+
+type MovieAPI struct {
+	MovieXtLightAPI
+	UserData     UserDataAPI       `json:"UserData"`
+	MediaStreams []MediaStreamsAPI `json:"MediaStreams"`
+}
+
+type MovieLightExtendedAPI struct {
+	MovieLightAPI
+	MediaStreams []MediaStreamsAPI `json:"MediaStreams"`
+}
+
+// type Movie struct {
+// 	MovieLightStatus
+// 	// TODO review PlayStatus, split API models and UI models if needed
+// 	PlayStatus UserPlayStatus `json:"PlayStatus"`
+// 	UserData   struct {
+// 		Played                bool   `json:"Played"`
+// 		PlaybackPositionTicks int64  `json:"PlaybackPositionTicks"`
+// 		PlayCount             int    `json:"PlayCount"`
+// 		LastPlayedDate        string `json:"LastPlayedDate"`
+// 	} `json:"UserData"`
+// 	MediaStreams []MediaStreamsAPI `json:"MediaStreams"`
+// }
+
+type MovieDTO struct {
+	MovieLightExtendedAPI
+	UserPlayStatuses []UserPlayStatus `json:"UserPlayStatuses"`
+}
+
+type MovieLightStatus struct {
+	MovieLightAPI
+	UserPlayStatuses []UserPlayStatus `json:"UserPlayStatuses"`
 }
 
 type UserPlayStatus struct {
@@ -42,11 +74,11 @@ type User struct {
 }
 
 // Extended Movie model with play status
-type MovieWithPlayStatus struct {
-	Movie
-	PlayStatus       UserPlayStatus   `json:"PlayStatus"`
-	UserPlayStatuses []UserPlayStatus `json:"UserPlayStatuses"`
-}
+// type MovieWithPlayStatus struct {
+// 	Movie
+// 	PlayStatus       UserPlayStatus   `json:"PlayStatus"`
+// 	UserPlayStatuses []UserPlayStatus `json:"UserPlayStatuses"`
+// }
 
 // PlayStatusDiscrepancy represents a discrepancy in play status between duplicate movies
 type PlayStatusDiscrepancy struct {
@@ -57,8 +89,8 @@ type PlayStatusDiscrepancy struct {
 }
 
 type DuplicateResult struct {
-	Movie1                   Movie                   `json:"movie1"`
-	Movie2                   Movie                   `json:"movie2"`
+	Movie1                   MovieDTO                `json:"movie1"`
+	Movie2                   MovieDTO                `json:"movie2"`
 	IsDuplicate              bool                    `json:"is_duplicate"`
 	Similarity               int                     `json:"similarity"`
 	HasPlayStatusDiscrepancy bool                    `json:"has_play_status_discrepancy"`

@@ -18,7 +18,7 @@ func NewService(client *jellyfinClients.Client) *ServerService {
 }
 
 // GetMultiUserPlayStatus fetches play status for all users using the optimized approach
-func (s *ServerService) GetMultiUserPlayStatus() ([]jellyfinModels.Movie, error) {
+func (s *ServerService) GetMultiUserPlayStatus() ([]jellyfinModels.MovieLightStatus, error) {
 	// Get all movies
 	allMovies, err := s.jellyfinClient.GetAllMovies()
 	if err != nil {
@@ -59,7 +59,7 @@ func (s *ServerService) FindDuplicates() ([]jellyfinModels.DuplicateResult, erro
 	var duplicates []jellyfinModels.DuplicateResult
 
 	// Create a map to group movies by their Name and ProductionYear
-	movieMap := make(map[string][]jellyfinModels.Movie)
+	movieMap := make(map[string][]jellyfinModels.MovieLightStatus)
 
 	for _, movie := range movies {
 		// Use Name-ProductionYear as the key
@@ -82,9 +82,31 @@ func (s *ServerService) FindDuplicates() ([]jellyfinModels.DuplicateResult, erro
 					// Check if movies have identical play status
 					hasIdenticalPlayStatus := s.HasIdenticalPlayStatus(group[i], group[j])
 
+					// Get movie details for UI display - Movie 1
+					movieDetails1, err := s.jellyfinClient.GetMovieDetails(group[i].ID)
+					if err != nil {
+						return duplicates, fmt.Errorf("failed to get movie details for movie 1: %v", err)
+					}
+
+					movieDTO1 := jellyfinModels.MovieDTO{
+						MovieLightExtendedAPI: movieDetails1,
+						UserPlayStatuses:      group[i].UserPlayStatuses,
+					}
+
+					// Get movie details for UI display - Movie 2
+					movieDetails2, err := s.jellyfinClient.GetMovieDetails(group[j].ID)
+					if err != nil {
+						return duplicates, fmt.Errorf("failed to get movie details for movie 2: %v", err)
+					}
+
+					movieDTO2 := jellyfinModels.MovieDTO{
+						MovieLightExtendedAPI: movieDetails2,
+						UserPlayStatuses:      group[j].UserPlayStatuses,
+					}
+
 					duplicates = append(duplicates, jellyfinModels.DuplicateResult{
-						Movie1:                 group[i],
-						Movie2:                 group[j],
+						Movie1:                 movieDTO1,
+						Movie2:                 movieDTO2,
 						IsDuplicate:            isDuplicate,
 						Similarity:             similarity,
 						HasIdenticalPlayStatus: hasIdenticalPlayStatus,
@@ -99,7 +121,7 @@ func (s *ServerService) FindDuplicates() ([]jellyfinModels.DuplicateResult, erro
 }
 
 // HasIdenticalPlayStatus checks if two movies have identical play status for all users
-func (s *ServerService) HasIdenticalPlayStatus(movie1, movie2 jellyfinModels.Movie) bool {
+func (s *ServerService) HasIdenticalPlayStatus(movie1, movie2 jellyfinModels.MovieLightStatus) bool {
 	// If either movie has no play status data, they're not identical
 	if len(movie1.UserPlayStatuses) == 0 || len(movie2.UserPlayStatuses) == 0 {
 		return false
@@ -166,7 +188,7 @@ func (s *ServerService) GetPlayStatusForAllUsers(dup jellyfinModels.DuplicateRes
 	return dup, nil
 }
 
-func (s *ServerService) GetPlayStatusDiscrepancies(movie1, movie2 jellyfinModels.Movie) []jellyfinModels.PlayStatusDiscrepancy {
+func (s *ServerService) GetPlayStatusDiscrepancies(movie1, movie2 jellyfinModels.MovieDTO) []jellyfinModels.PlayStatusDiscrepancy {
 	var discrepancies []jellyfinModels.PlayStatusDiscrepancy
 
 	// Create maps for quick lookup

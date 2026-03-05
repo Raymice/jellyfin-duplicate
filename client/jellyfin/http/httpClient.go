@@ -6,6 +6,7 @@ import (
 	"jellyfin-duplicate/client/jellyfin/models"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sirupsen/logrus"
@@ -70,9 +71,9 @@ func NewClient(baseURL, apiKey string, userID string) *Client {
 	}
 }
 
-func (c *Client) GetAllMovies() ([]models.Movie, error) {
+func (c *Client) GetAllMovies() ([]models.MovieLightAPI, error) {
 	logrus.Info("Fetching all movies from Jellyfin in parallel...")
-	var movies []models.Movie
+	var movies []models.MovieLightAPI
 
 	// Get all libraries first
 	logrus.Debug("Getting libraries...")
@@ -83,7 +84,7 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 	logrus.Infof("Found %d libraries", len(libraries))
 
 	// Use channels for parallel fetching
-	movieChannel := make(chan []models.Movie, len(libraries))
+	movieChannel := make(chan []models.MovieLightAPI, len(libraries))
 	errorChannel := make(chan error, len(libraries))
 	var wg sync.WaitGroup
 
@@ -95,7 +96,7 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 	// For each library, get movies in parallel
 	for _, library := range libraries {
 		wg.Add(1)
-		go func(lib models.Library) {
+		go func(lib models.LibraryAPI) {
 			defer wg.Done()
 
 			// Acquire semaphore slot
@@ -138,7 +139,7 @@ func (c *Client) GetAllMovies() ([]models.Movie, error) {
 	return movies, nil
 }
 
-func (c *Client) GetLibraries() ([]models.Library, error) {
+func (c *Client) GetLibraries() ([]models.LibraryAPI, error) {
 	if c.userID == "" {
 		return nil, fmt.Errorf("user ID not set")
 	}
@@ -159,7 +160,7 @@ func (c *Client) GetLibraries() ([]models.Library, error) {
 
 	// Parse the JSON response manually
 	var result struct {
-		Items []models.Library `json:"Items"`
+		Items []models.LibraryAPI `json:"Items"`
 	}
 
 	err = json.Unmarshal(resp.Body(), &result)
@@ -177,27 +178,32 @@ func (c *Client) GetLibraries() ([]models.Library, error) {
 	return result.Items, nil
 }
 
-func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) {
-	var allMovies []models.Movie
+func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.MovieLightAPI, error) {
+	var allMovies []models.MovieLightAPI
+
+	start := time.Now()
 
 	// Start with the first page
 	startIndex := 0
-	limit := 100 // Jellyfin's default limit, can be adjusted
+	limit := 2000
 
 	for {
 		var result struct {
-			Items            []models.Movie `json:"Items"`
-			TotalRecordCount int            `json:"TotalRecordCount"`
+			Items            []models.MovieLightAPI `json:"Items"`
+			TotalRecordCount int                    `json:"TotalRecordCount"`
 		}
 
 		resp, err := c.client.R().
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
-			SetQueryParam("Recursive", "true").
-			SetQueryParam("IncludeItemTypes", "Movie").
-			SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData,MediaStreams").
-			SetQueryParam("ParentId", libraryID).
-			SetQueryParam("StartIndex", fmt.Sprintf("%d", startIndex)).
-			SetQueryParam("Limit", fmt.Sprintf("%d", limit)).
+			SetQueryParam("recursive", "true").
+			SetQueryParam("includeItemTypes", "Movie").
+			SetQueryParam("parentId", libraryID).
+			SetQueryParam("enableUserData", "false").
+			SetQueryParam("enableImages", "false").
+			SetQueryParam("enableTotalRecordCount", "true").
+			SetQueryParam("fields", "Path").
+			SetQueryParam("startIndex", fmt.Sprintf("%d", startIndex)).
+			SetQueryParam("limit", fmt.Sprintf("%d", limit)).
 			SetResult(&result).
 			Get(fmt.Sprintf("%s/Items", c.baseURL))
 
@@ -223,6 +229,7 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.Movie, error) 
 		startIndex += limit
 	}
 
+	logrus.Infof("Finished fetching movies from library %s in %v", libraryID, time.Since(start))
 	return allMovies, nil
 }
 
@@ -259,19 +266,13 @@ func (c *Client) GetAllUsers() ([]models.User, error) {
 }
 
 func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPlayStatus, error) {
-	var result struct {
-		UserData struct {
-			Played                bool   `json:"Played"`
-			PlaybackPositionTicks int64  `json:"PlaybackPositionTicks"`
-			PlayCount             int    `json:"PlayCount"`
-			LastPlayedDate        string `json:"LastPlayedDate"`
-		} `json:"UserData"`
-	}
+	var result models.UserDataAPI
 
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
+		SetQueryParam("userId", userID).
 		SetResult(&result).
-		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, userID, movieID))
+		Get(fmt.Sprintf("%s/UserItems/%s/UserData", c.baseURL, movieID))
 
 	if err != nil {
 		return models.UserPlayStatus{}, fmt.Errorf("failed to call Jellyfin API for user play status: %v", err)
@@ -286,34 +287,60 @@ func (c *Client) GetUserPlayStatus(movieID string, userID string) (models.UserPl
 	return models.UserPlayStatus{
 		UserID:    c.userID,
 		UserName:  "Current User", // Would need to fetch user info separately
-		Played:    result.UserData.Played,
-		PlayCount: result.UserData.PlayCount,
+		Played:    result.Played,
+		PlayCount: result.PlayCount,
 	}, nil
 }
 
+func (c *Client) GetMovieDetails(movieID string) (models.MovieLightExtendedAPI, error) {
+	var result models.MovieLightExtendedAPI
+
+	resp, err := c.client.R().
+		SetHeader("X-MediaBrowser-Token", c.apiKey).
+		SetQueryParam("userId", c.userID).
+		SetQueryParam("enableImages", "false").
+		SetQueryParam("enableUserData", "false").
+		SetQueryParam("fields", "Path").
+		SetResult(&result).
+		Get(fmt.Sprintf("%s/Items/%s", c.baseURL, movieID))
+
+	if err != nil {
+		return models.MovieLightExtendedAPI{}, fmt.Errorf("failed to call Jellyfin API for movie details: %v", err)
+	}
+
+	// Check HTTP status code
+	err = checkHTTPResponse(resp, 200)
+	if err != nil {
+		return models.MovieLightExtendedAPI{}, fmt.Errorf("failed to fetch movie details: %v", err)
+	}
+
+	return result, nil
+}
+
 // GetSeenMoviesForUser fetches all movies that a specific user has seen (played)
-func (c *Client) GetSeenMoviesForUser(userID string) ([]models.Movie, error) {
-	var allMovies []models.Movie
+func (c *Client) GetSeenMoviesForUser(userID string) ([]models.MovieLightAPI, error) {
+	var allMovies []models.MovieLightAPI
 
 	// Start with the first page
 	startIndex := 0
-	limit := 100 // Jellyfin's default limit, can be adjusted
+	limit := 2000
 
 	for {
 		var result struct {
-			Items            []models.Movie `json:"Items"`
-			TotalRecordCount int            `json:"TotalRecordCount"`
+			Items            []models.MovieLightAPI `json:"Items"`
+			TotalRecordCount int                    `json:"TotalRecordCount"`
 		}
 
 		resp, err := c.client.R().
 			SetHeader("X-MediaBrowser-Token", c.apiKey).
-			SetQueryParam("Recursive", "true").
-			SetQueryParam("IncludeItemTypes", "Movie").
-			SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData,MediaStreams").
-			SetQueryParam("Filters", "IsPlayed").
-			SetQueryParam("UserId", userID).
-			SetQueryParam("StartIndex", fmt.Sprintf("%d", startIndex)).
-			SetQueryParam("Limit", fmt.Sprintf("%d", limit)).
+			SetQueryParam("recursive", "true").
+			SetQueryParam("includeItemTypes", "Movie").
+			SetQueryParam("isPlayed", "true").
+			SetQueryParam("userId", userID).
+			SetQueryParam("enableUserData", "false").
+			SetQueryParam("enableImages", "false").
+			SetQueryParam("startIndex", fmt.Sprintf("%d", startIndex)).
+			SetQueryParam("limit", fmt.Sprintf("%d", limit)).
 			SetResult(&result).
 			Get(fmt.Sprintf("%s/Items", c.baseURL))
 
@@ -342,9 +369,9 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.Movie, error) {
 }
 
 // GetSeenMoviesForAllUsers fetches seen movies for all users in parallel (max 5 concurrent)
-func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]models.Movie, error) {
+func (c *Client) GetSeenMoviesForAllUsers(users []models.User) (map[string][]models.MovieLightAPI, error) {
 	logrus.Infof("Fetching seen movies for %d users in parallel...", len(users))
-	userSeenMovies := make(map[string][]models.Movie)
+	userSeenMovies := make(map[string][]models.MovieLightAPI)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
@@ -401,7 +428,7 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
-		SetQueryParam("Fields", "ProviderIds,ProductionYear,Path,UserData,MediaStreams").
+		SetQueryParam("Fields", "Path").
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, c.userID, movieID))
 
@@ -556,11 +583,14 @@ func (c *Client) DeleteMovie(movieID string) error {
 }
 
 // ReconcilePlayStatusWithAllMovies reconciles seen movies with all movies to create play status
-func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.Movie, userSeenMovies map[string][]models.Movie, users []models.User) ([]models.Movie, error) {
+func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.MovieLightAPI, userSeenMovies map[string][]models.MovieLightAPI, users []models.User) ([]models.MovieLightStatus, error) {
 	// Create a map of all movies by ID for quick lookup
-	movieMap := make(map[string]models.Movie)
+	movieMap := make(map[string]models.MovieLightStatus)
 	for _, movie := range allMovies {
-		movieMap[movie.ID] = movie
+		movieMap[movie.ID] = models.MovieLightStatus{
+			MovieLightAPI:    movie,
+			UserPlayStatuses: []models.UserPlayStatus{},
+		}
 	}
 
 	// For each user, mark their seen movies
@@ -611,7 +641,7 @@ func (c *Client) ReconcilePlayStatusWithAllMovies(allMovies []models.Movie, user
 	}
 
 	// Convert map back to slice
-	var moviesWithPlayStatus []models.Movie
+	var moviesWithPlayStatus []models.MovieLightStatus
 	for _, movie := range movieMap {
 		moviesWithPlayStatus = append(moviesWithPlayStatus, movie)
 	}
