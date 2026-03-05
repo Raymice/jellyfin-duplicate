@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	jellyfinClients "jellyfin-duplicate/client/jellyfin/http"
-	jellyfinModels "jellyfin-duplicate/client/jellyfin/models"
+	serverModels "jellyfin-duplicate/server/models"
 
 	"net/http"
 
@@ -51,8 +51,8 @@ func (h *Handler) GetDuplicatesPage(ctx *gin.Context) {
 	}
 
 	// Separate duplicates and mismatches for better UI organization
-	var potentialDuplicates []jellyfinModels.DuplicateResult
-	var potentialMismatches []jellyfinModels.DuplicateResult
+	var potentialDuplicates []serverModels.DuplicateResultDTO
+	var potentialMismatches []serverModels.DuplicateResultDTO
 
 	for _, dup := range duplicates {
 		if dup.IsDuplicate {
