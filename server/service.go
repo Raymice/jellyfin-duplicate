@@ -5,6 +5,7 @@ import (
 	jellyfinClients "jellyfin-duplicate/client/jellyfin/http"
 	apiModels "jellyfin-duplicate/client/jellyfin/models"
 	serverModels "jellyfin-duplicate/server/models"
+	"time"
 
 	"jellyfin-duplicate/utils"
 
@@ -127,6 +128,8 @@ func (s *ServerService) FindDuplicates() ([]serverModels.DuplicateResultDTO, err
 
 	var duplicates []serverModels.DuplicateResultDTO
 
+	start := time.Now()
+
 	// Create a map to group movies by their Name and ProductionYear
 	movieMap := make(map[string][]serverModels.MovieLightStatusDTO)
 
@@ -139,7 +142,11 @@ func (s *ServerService) FindDuplicates() ([]serverModels.DuplicateResultDTO, err
 	}
 
 	// Find duplicates by checking groups with more than one movie
-	logrus.Infof("Found %d unique movie groups", len(movieMap))
+	logrus.Infof("Found %d unique movie groups in %v", len(movieMap), time.Since(start))
+
+	logrus.Infof("Starting duplicate detection for %d groups", len(movieMap))
+	start = time.Now()
+
 	for _, group := range movieMap {
 		if len(group) > 1 {
 			// Compare all pairs in the group
@@ -185,7 +192,7 @@ func (s *ServerService) FindDuplicates() ([]serverModels.DuplicateResultDTO, err
 		}
 	}
 
-	logrus.Infof("Duplicate detection completed. Found %d duplicate pairs", len(duplicates))
+	logrus.Infof("Duplicate detection completed. Found %d duplicate pairs in %v", len(duplicates), time.Since(start))
 	return duplicates, nil
 }
 

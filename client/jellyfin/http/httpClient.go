@@ -144,6 +144,8 @@ func (c *Client) GetLibraries() ([]models.LibraryAPI, error) {
 		return nil, fmt.Errorf("user ID not set")
 	}
 
+	start := time.Now()
+
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
 		Get(fmt.Sprintf("%s/Users/%s/Views", c.baseURL, c.userID))
@@ -174,7 +176,7 @@ func (c *Client) GetLibraries() ([]models.LibraryAPI, error) {
 		return nil, fmt.Errorf("Jellyfin API returned empty or invalid library data")
 	}
 
-	logrus.Debugf("Successfully fetched %d libraries from Jellyfin", len(result.Items))
+	logrus.Debugf("Successfully fetched %d libraries from Jellyfin in %v", len(result.Items), time.Since(start))
 	return result.Items, nil
 }
 
@@ -235,8 +237,11 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.MovieLightAPI,
 
 // GetAllUsers fetches all users from Jellyfin and populates the user cache
 func (c *Client) GetAllUsers() ([]models.UserAPI, error) {
-	logrus.Info("Fetching all users from Jellyfin...")
+
 	var users []models.UserAPI
+
+	start := time.Now()
+	logrus.Info("Fetching all users from Jellyfin...")
 
 	resp, err := c.client.R().
 		SetHeader("X-MediaBrowser-Token", c.apiKey).
@@ -260,7 +265,7 @@ func (c *Client) GetAllUsers() ([]models.UserAPI, error) {
 	}
 	c.cacheMutex.Unlock()
 
-	logrus.Infof("Found %d users and populated user cache", len(users))
+	logrus.Infof("Found %d users and populated user cache in %v", len(users), time.Since(start))
 	return users, nil
 }
 
@@ -364,10 +369,12 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.MovieLightAPI, er
 
 // GetSeenMoviesForAllUsers fetches seen movies for all users in parallel (max 5 concurrent)
 func (c *Client) GetSeenMoviesForAllUsers(users []models.UserAPI) (map[string][]models.MovieLightAPI, error) {
-	logrus.Infof("Fetching seen movies for %d users in parallel...", len(users))
 	userSeenMovies := make(map[string][]models.MovieLightAPI)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+
+	start := time.Now()
+	logrus.Infof("Fetching seen movies for %d users in parallel...", len(users))
 
 	// Limit concurrent goroutines to 5
 	semaphore := make(chan struct{}, 5)
@@ -405,7 +412,7 @@ func (c *Client) GetSeenMoviesForAllUsers(users []models.UserAPI) (map[string][]
 		return nil, fmt.Errorf("errors occurred while fetching seen movies: %v", errors)
 	}
 
-	logrus.Infof("Successfully fetched seen movies for all %d users", len(users))
+	logrus.Infof("Successfully fetched seen movies for all %d users in %v", len(users), time.Since(start))
 	return userSeenMovies, nil
 }
 
