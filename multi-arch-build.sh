@@ -34,7 +34,7 @@ for entry in "${platforms[@]}"; do
     TARGET_FILE_NAME="$BIN_NAME-$GOOS-$GOARCH$EXTENSION"
 
     echo "🛠️ Building $TARGET_FILE_NAME ..."
-    go build -o $BIN_DIR/$TARGET_FILE_NAME $SOURCE_FILE
+    GOOS=$GOOS GOARCH=$GOARCH go build -o $BIN_DIR/$TARGET_FILE_NAME $SOURCE_FILE
     echo "✅ $TARGET_FILE_NAME built"
 done
 
