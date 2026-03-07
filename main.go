@@ -4,6 +4,7 @@ import (
 	jellyfinClient "jellyfin-duplicate/client/jellyfin/http"
 	confServices "jellyfin-duplicate/configuration/services"
 	server "jellyfin-duplicate/server"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -31,7 +32,7 @@ func main() {
 	logrus.Infof("Configuration loaded successfully. Jellyfin URL: %s", config.Jellyfin.URL)
 
 	// Configure GIN mode
-	confServices.ConfigureGINMode(config.Environment)
+	confServices.ConfigureGINMode()
 
 	// Initialize Jellyfin client
 	logrus.Info("Initializing Jellyfin client...")
@@ -42,10 +43,12 @@ func main() {
 	// Create Gin router
 	logrus.Info("Setting up web server...")
 	r := gin.Default()
+	r.SetTrustedProxies([]string{config.Jellyfin.URL})
 
 	// Load HTML templates
 	logrus.Info("Loading HTML templates...")
-	r.LoadHTMLGlob("server/templates/*")
+
+	r.LoadHTMLFS(http.FS(server.GetTemplateFS()), server.GetTemplateFSPath())
 
 	// Set up handlers
 	logrus.Info("Initializing handlers...")

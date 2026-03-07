@@ -43,13 +43,11 @@ WORKDIR /app
 COPY --from=builder /app/jellyfin-duplicate .
 
 # Copy configuration files
-COPY configuration/files/ configuration/files/
+COPY configuration/services/assets/ configuration/services/assets/
 
 # Copy HTML templates
 COPY server/templates/ server/templates/
 
-# Set environment variables (these can be overridden at runtime)
-ENV ENVIRONMENT="production"
 
 # Expose the port the app runs on
 EXPOSE 8080
