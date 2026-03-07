@@ -43,6 +43,7 @@ func main() {
 	// Create Gin router
 	logrus.Info("Setting up web server...")
 	r := gin.Default()
+	r.SetTrustedProxies([]string{config.Jellyfin.URL})
 
 	// Load HTML templates
 	logrus.Info("Loading HTML templates...")
