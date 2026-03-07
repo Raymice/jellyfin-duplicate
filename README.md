@@ -108,15 +108,14 @@ A Go application that helps you safely identify and remove duplicate movies from
 ```shell
 # macOS amd64 (Intel) 
 # Current Session Only, otherwise set variables in your bashrc
-ENVIRONMENT=production JELLYFIN_URL=XXX JELLYFIN_API_KEY=XXX JELLYFIN_ADMIN_USER_ID=XXX jellyfin-duplicate-darwin-amd64
+JELLYFIN_URL=XXX JELLYFIN_API_KEY=XXX JELLYFIN_ADMIN_USER_ID=XXX jellyfin-duplicate-darwin-amd64
 
 # macOS arm64 (Apple Silicon)
 # Current Session Only, otherwise set variables in your bashrc
-ENVIRONMENT=production JELLYFIN_URL=XXX JELLYFIN_API_KEY=XXX JELLYFIN_ADMIN_USER_ID=XXX jellyfin-duplicate-darwin-arm64
+JELLYFIN_URL=XXX JELLYFIN_API_KEY=XXX JELLYFIN_ADMIN_USER_ID=XXX jellyfin-duplicate-darwin-arm64
 
 # windows amd64/arm64
 # Current Session Only, otherwise set variables in your User Level environment values
-set ENVIRONMENT=production
 set JELLYFIN_URL=XXX
 set JELLYFIN_API_KEY=XXX
 set JELLYFIN_ADMIN_USER_ID=XXX

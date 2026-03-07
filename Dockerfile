@@ -48,8 +48,6 @@ COPY configuration/files/ configuration/files/
 # Copy HTML templates
 COPY server/templates/ server/templates/
 
-# Set environment variables (these can be overridden at runtime)
-ENV ENVIRONMENT="production"
 
 # Expose the port the app runs on
 EXPOSE 8080
