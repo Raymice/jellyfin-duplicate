@@ -99,6 +99,31 @@ A Go application that helps you safely identify and remove duplicate movies from
      jellyfin-duplicate
    ```
 
+### Binary Installation
+
+1. Go to the release page of the target version in GitHub.
+2. Download the binary according to your OS & Architecture
+3. Run the binary with your environment variables or set your environment variables in your OS before;
+
+```shell
+# macOS amd64 (Intel) 
+# Current Session Only, otherwise set variables in your bashrc
+ENVIRONMENT=production JELLYFIN_URL=XXX JELLYFIN_API_KEY=XXX JELLYFIN_ADMIN_USER_ID=XXX jellyfin-duplicate-darwin-amd64
+
+# macOS arm64 (Apple Silicon)
+# Current Session Only, otherwise set variables in your bashrc
+ENVIRONMENT=production JELLYFIN_URL=XXX JELLYFIN_API_KEY=XXX JELLYFIN_ADMIN_USER_ID=XXX jellyfin-duplicate-darwin-arm64
+
+# windows amd64/arm64
+# Current Session Only, otherwise set variables in your User Level environment values
+set ENVIRONMENT=production
+set JELLYFIN_URL=XXX
+set JELLYFIN_API_KEY=XXX
+set JELLYFIN_ADMIN_USER_ID=XXX
+
+jellyfin-duplicate-windows-amd64.exe
+```
+
 ### Native Installation / Development
 
 1. Clone this repository
