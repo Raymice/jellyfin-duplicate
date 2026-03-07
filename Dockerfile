@@ -43,7 +43,7 @@ WORKDIR /app
 COPY --from=builder /app/jellyfin-duplicate .
 
 # Copy configuration files
-COPY configuration/files/ configuration/files/
+COPY configuration/services/assets/ configuration/services/assets/
 
 # Copy HTML templates
 COPY server/templates/ server/templates/
