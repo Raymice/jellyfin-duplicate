@@ -3,6 +3,8 @@ package utils_test
 import (
 	"jellyfin-duplicate/utils"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLevenshteinDistance(t *testing.T) {
@@ -40,9 +42,7 @@ func TestLevenshteinDistance(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := utils.LevenshteinDistance(tt.moviePath1, tt.moviePath2)
-			if tt.want != got {
-				t.Errorf("LevenshteinDistance() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got, "Should return the expected Levenshtein distance")
 		})
 	}
 }
@@ -82,9 +82,7 @@ func TestCalculatePathSimilarity(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := utils.CalculatePathSimilarity(tt.moviePath1, tt.moviePath2)
-			if tt.want != got {
-				t.Errorf("CalculatePathSimilarity() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got, "Should return the expected similarity percentage")
 		})
 	}
 }
