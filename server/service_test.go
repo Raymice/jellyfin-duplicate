@@ -158,39 +158,32 @@ func TestServerService_GetPlayStatusDiscrepancies(t *testing.T) {
 	}
 }
 
-// func TestServerService_GetUserPlayStatus(t *testing.T) {
-
-// 	tests := []struct {
-// 		name    string // description of this test case
-// 		client  *jellyfinClients.Client
-// 		movieID string
-// 		userID  string
-// 		want    serverModels.UserPlayStatusDTO
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name:    "Valid movie and user IDs",
-// 			client:  &jellyfinClients.Client{},
-// 			movieID: "1",
-// 			userID:  "user1",
-// 			want: serverModels.UserPlayStatusDTO{
-// 				UserID:    "user1",
-// 				UserName:  "Played",
-// 				Played:    true,
-// 				PlayCount: 1,
-// 			},
-// 			wantErr: false,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			s := server.NewService(tt.client)
-// 			got, gotErr := s.GetUserPlayStatus(tt.movieID, tt.userID)
-// 			if gotErr != nil {
-// 				assert.Nil(t, tt.wantErr, "Expected no error, but got one")
-// 			}
-// 			assert.Nil(t, tt.wantErr, "Expected an error, but got none")
-// 			assert.Equal(t, tt.want, got, "Should return the expected user play status")
-// 		})
-// 	}
-// }
+func TestIsUUIDFormtatted(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		id   string
+		want bool
+	}{
+		{
+			name: "Valid UUID",
+			id:   "123e4567-e89b-12d3-a456-426614174000",
+			want: true,
+		},
+		{
+			name: "Valid UUID - missing hyphens",
+			id:   "123e4567e89b12d3a456426614174000",
+			want: true,
+		},
+		{
+			name: "Invalid UUID - wrong length",
+			id:   "123e4567-e89b-12d3-a456-42661417400-56456465",
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := server.IsUUIDFormtatted(tt.id)
+			assert.Equal(t, tt.want, got, "Should return whether the string is a valid UUID format")
+		})
+	}
+}
