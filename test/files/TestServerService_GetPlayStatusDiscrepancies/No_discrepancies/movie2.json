@@ -1,0 +1,10 @@
+{
+    "UserPlayStatuses": [
+        {
+            "UserID": "user1",
+            "UserName": "User One",
+            "Played": true,
+            "PlayCount": 1
+        }
+    ]
+}

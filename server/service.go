@@ -281,7 +281,7 @@ func (s *ServerService) GetPlayStatusForAllUsers(dup serverModels.DuplicateResul
 }
 
 func (s *ServerService) GetPlayStatusDiscrepancies(movie1, movie2 serverModels.MovieDTO) []serverModels.PlayStatusDiscrepancyDTO {
-	var discrepancies []serverModels.PlayStatusDiscrepancyDTO
+	var discrepancies []serverModels.PlayStatusDiscrepancyDTO = []serverModels.PlayStatusDiscrepancyDTO{}
 
 	// Create maps for quick lookup
 	movie1SeenBy := make(map[string]bool)

@@ -1,0 +1,12 @@
+{
+    "Id": "1",
+    "Name": "Movie 1",
+    "UserPlayStatuses": [
+        {
+            "UserID": "user1",
+            "UserName": "User One",
+            "Played": true,
+            "PlayCount": 1
+        }
+    ]
+}
