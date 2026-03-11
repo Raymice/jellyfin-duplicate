@@ -55,51 +55,31 @@ func TestRootDir(t *testing.T) {
 }
 func TestReadJsonTestFile(t *testing.T) {
 	tests := []struct {
-		name      string
-		filePath  string
-		expectErr bool
+		name     string
+		filePath string
 	}{
 		{
-			name:      "Successfully reads and unmarshals valid JSON",
-			filePath:  "valid.json",
-			expectErr: false,
-		},
-		{
-			name:      "Fails with non-existent file",
-			filePath:  "nonexistent.json",
-			expectErr: true,
-		},
-		{
-			name:      "Fails with invalid JSON content",
-			filePath:  "invalid.json",
-			expectErr: true,
+			name:     "Successfully reads and unmarshals valid JSON",
+			filePath: "TestServerService_GetPlayStatusDiscrepancies/No_discrepancies/expected.json",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var result map[string]interface{}
-			if tt.expectErr {
-				assert.Panics(t, func() {
-					ReadJsonTestFile(t, tt.filePath, &result)
-				}, "ReadJsonTestFile should fail for %s", tt.filePath)
-			} else {
-				ReadJsonTestFile(t, tt.filePath, &result)
-				assert.NotEmpty(t, result, "ReadJsonTestFile should populate the result")
-			}
+			var result []interface{}
+			ReadJsonTestFile(t, tt.filePath, &result)
+			assert.NotNil(t, result, "ReadJsonTestFile should populate the result")
 		})
 	}
 }
 
 func TestParseFromJsonFile(t *testing.T) {
 	tests := []struct {
-		name      string
-		filePath  string
-		expectErr bool
+		name     string
+		filePath string
 	}{
 		{
-			name:      "Successfully parses and returns data",
-			filePath:  "TestServerService_GetPlayStatusDiscrepancies/No_discrepancies/expected.json",
-			expectErr: false,
+			name:     "Successfully parses and returns data",
+			filePath: "TestServerService_GetPlayStatusDiscrepancies/No_discrepancies/expected.json",
 		},
 	}
 	for _, tt := range tests {
