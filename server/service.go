@@ -108,7 +108,7 @@ func (s *ServerService) ReconcilePlayStatusWithAllMovies(allMovies []apiModels.M
 	}
 
 	// Convert map back to slice
-	var moviesWithPlayStatus []serverModels.MovieLightStatusDTO
+	var moviesWithPlayStatus []serverModels.MovieLightStatusDTO = []serverModels.MovieLightStatusDTO{}
 	for _, movie := range movieMap {
 		moviesWithPlayStatus = append(moviesWithPlayStatus, movie)
 	}

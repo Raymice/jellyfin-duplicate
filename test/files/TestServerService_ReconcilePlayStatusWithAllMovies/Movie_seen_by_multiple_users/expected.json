@@ -1,0 +1,20 @@
+[
+    {
+        "Id": "1",
+        "Name": "movie1",
+        "UserPlayStatuses": [
+            {
+                "UserId": "user1",
+                "UserName": "User One",
+                "Played": true,
+                "PlayCount": 0
+            },
+            {
+                "UserId": "user2",
+                "UserName": "User Two",
+                "Played": true,
+                "PlayCount": 0
+            }
+        ]
+    }
+]
