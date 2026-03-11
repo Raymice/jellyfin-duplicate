@@ -10,11 +10,14 @@ import (
 )
 
 func mockServer(response string, statusCode int) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		_, _ = w.Write([]byte(response))
 	}))
+
+	return server
 }
 
 func mockClient() *Client {
@@ -101,6 +104,55 @@ func TestGetUserName(t *testing.T) {
 			} else {
 				assert.NoError(t, err, "GetUserName should not return an error")
 				assert.Equal(t, tt.expectedName, result, "GetUserName returned unexpected result")
+			}
+		})
+	}
+}
+
+func TestDeleteMovie(t *testing.T) {
+	tests := []struct {
+		name          string
+		statusCode    int
+		response      string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name:        "Delete 204 No Content",
+			statusCode:  http.StatusNoContent,
+			response:    "",
+			expectError: false,
+		},
+		{
+			name:        "Delete 200 OK",
+			statusCode:  http.StatusOK,
+			response:    "",
+			expectError: false,
+		},
+		{
+			name:          "Delete not found returns error",
+			statusCode:    http.StatusNotFound,
+			response:      `{"Message":"Not Found"}`,
+			expectError:   true,
+			errorContains: "unexpected status code 404",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := mockClient()
+			server := mockServer(tt.response, tt.statusCode)
+			defer server.Close()
+
+			client.baseURL = server.URL
+
+			err := client.DeleteMovie("movie-123")
+
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
