@@ -1,0 +1,6 @@
+{
+    "userID": "user-123",
+    "apiResponse": "{\"Items\":[{\"Id\":\"lib-1\",\"Name\":\"Movies\"}]}",
+    "statusCode": 200,
+    "expectError": false
+}

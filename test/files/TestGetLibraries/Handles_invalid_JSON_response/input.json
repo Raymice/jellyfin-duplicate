@@ -1,0 +1,6 @@
+{
+  "userID": "user-123",
+  "apiResponse": "invalid json",
+  "statusCode": 200,
+  "expectError": true
+}

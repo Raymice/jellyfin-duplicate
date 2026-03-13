@@ -1,0 +1,6 @@
+{
+  "userID": "user-123",
+  "apiResponse": "{\"Message\":\"Internal Server Error\"}",
+  "statusCode": 500,
+  "expectError": true
+}

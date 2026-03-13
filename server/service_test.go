@@ -418,50 +418,47 @@ func TestServerService_MarkMovieAsSeen(t *testing.T) {
 }
 
 func TestIsUUIDFormtatted(t *testing.T) {
-	tests := []struct {
-		name string // description of this test case
-		id   string
-		want bool
-	}{
-		{
-			name: "Valid UUID",
-			id:   "123e4567-e89b-12d3-a456-426614174000",
-			want: true,
-		},
-		{
-			name: "Valid UUID - missing hyphens",
-			id:   "123e4567e89b12d3a456426614174000",
-			want: true,
-		},
-		{
-			name: "Invalid UUID - wrong length",
-			id:   "123e4567-e89b-12d3-a456-42661417400-56456465",
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := server.IsUUIDFormtatted(tt.id)
-			assert.Equal(t, tt.want, got, "Should return whether the string is a valid UUID format")
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				ID string `json:"id"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				IsValidUUID bool `json:"isValidUUID"`
+			}{})
+
+			// Execution
+			got := server.IsUUIDFormtatted(input.ID)
+
+			// Validation
+			assert.Equal(t, expected.IsValidUUID, got, "Should return whether the string is a valid UUID format")
 		})
 	}
 }
 
 func TestNewService(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{
-			name: "Creates service with fake client",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ServiceNotNil bool `json:"serviceNotNil"`
+			}{})
+
+			// Execution
 			fakeClient := &fakeJellyfinClient{}
 			service := server.NewService(fakeClient)
 
-			assert.NotNil(t, service, "Service should not be nil")
+			// Validation
+			if expected.ServiceNotNil {
+				assert.NotNil(t, service, "Service should not be nil")
+			}
 		})
 	}
 }

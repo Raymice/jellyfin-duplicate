@@ -1,0 +1,6 @@
+{
+  "movieID": "movie-123",
+  "apiResponse": "{\"Name\":\"The Matrix\"}",
+  "statusCode": 200,
+  "expectError": false
+}

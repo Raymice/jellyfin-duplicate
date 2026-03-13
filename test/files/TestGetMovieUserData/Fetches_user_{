@@ -1,0 +1,24 @@
+    "errorMessage": "error"
+}
+EOF
+ cat > /Users/aymericzanirato/Workspace/jellyfin-duplicate/test/files/TestGetMovieUserData/Fetches_user_data_successfully_played/input.json << 'EOF'
+{
+    "movieID": "movie-123",
+    "userID": "user-456",
+    "apiResponse": "{\"Played\": true, \"PlayCount\": 2, \"LastPlayedDate\": \"2024-01-01\"}",
+    "statusCode": 200,
+    "expectError": false
+}
+EOF
+
+cat > /Users/aymericzanirato/Workspace/jellyfin-duplicate/test/files/TestGetMovieUserData/Fetches_user_{
+    "errorMessage": "error"
+}
+EOt_pl}
+EOF
+ cat > /Users/aymeri'
+{
+{
+                                                                                                                                                                                                                                                                                                                                                                  pac                                                                                                       rorMessage": "failed to fetch user play status"
+}
+EOF

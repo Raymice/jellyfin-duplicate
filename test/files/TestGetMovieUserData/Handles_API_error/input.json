@@ -1,0 +1,7 @@
+{
+  "movieID": "movie-123",
+  "userID": "user-456",
+  "apiResponse": "{\"Message\":\"Not Found\"}",
+  "statusCode": 404,
+  "expectError": true
+}

@@ -1,0 +1,6 @@
+{
+  "movieID": "movie-123",
+  "apiResponse": "{\"Message\":\"Error\"}",
+  "statusCode": 500,
+  "expectError": true
+}

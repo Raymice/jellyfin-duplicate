@@ -1,0 +1,7 @@
+{
+  "statusCode": 418,
+  "expectedStatuses": [
+    200
+  ],
+  "expectError": true
+}

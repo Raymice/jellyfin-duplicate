@@ -1,9 +1,12 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"jellyfin-duplicate/test"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
@@ -30,545 +33,340 @@ func mockClient() *Client {
 	}
 }
 
-func TestGetUserName(t *testing.T) {
-	tests := []struct {
-		name          string
-		userID        string
-		cachedName    string
-		apiResponse   string
-		expectedName  string
-		expectError   bool
-		errorContains string
-	}{
-		{
-			name:         "Returns cached user name",
-			userID:       "user-123",
-			cachedName:   "John Doe",
-			expectedName: "John Doe",
-			expectError:  false,
-		},
-		{
-			name:         "Fetches and caches user name from API",
-			userID:       "user-456",
-			cachedName:   "",
-			apiResponse:  `{"Name":"Jane Smith"}`,
-			expectedName: "Jane Smith",
-			expectError:  false,
-		},
-		{
-			name:          "Handles API error",
-			userID:        "user-789",
-			cachedName:    "",
-			apiResponse:   ``,
-			expectedName:  "",
-			expectError:   true,
-			errorContains: "failed to fetch user name",
-		},
-		{
-			name:         "Handles empty API response",
-			userID:       "user-empty",
-			cachedName:   "",
-			apiResponse:  `{"Name":""}`,
-			expectedName: "",
-			expectError:  false,
-		},
+func TestNewClient(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				URL    string `json:"url"`
+				APIKey string `json:"apiKey"`
+				UserID string `json:"userId"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				BaseURL        string `json:"baseURL"`
+				APIKey         string `json:"apiKey"`
+				UserID         string `json:"userID"`
+				UserCacheEmpty bool   `json:"userCacheEmpty"`
+				HasClient      bool   `json:"hasClient"`
+			}{})
+
+			// Execution
+			client := NewClient(input.URL, input.APIKey, input.UserID)
+
+			// Validation
+			assert.NotNil(t, client)
+			assert.Equal(t, expected.BaseURL, client.baseURL)
+			assert.Equal(t, expected.APIKey, client.apiKey)
+			assert.Equal(t, expected.UserID, client.userID)
+			if expected.HasClient {
+				assert.NotNil(t, client.client)
+			}
+			if expected.UserCacheEmpty {
+				assert.NotNil(t, client.userCache)
+				assert.Equal(t, 0, len(client.userCache))
+			}
+		})
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+func TestGetUserName(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				UserID      string `json:"userID"`
+				CachedName  string `json:"cachedName"`
+				APIResponse string `json:"apiResponse"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ExpectedName string `json:"expectedName"`
+			}{})
+
+			// Setup
 			client := mockClient()
-
-			// Pre-populate cache if needed
-			if tt.cachedName != "" {
-				client.userCache[tt.userID] = tt.cachedName
+			if input.CachedName != "" {
+				client.userCache[input.UserID] = input.CachedName
 			}
 
-			// Mock the HTTP client if API call is expected
-			var server *httptest.Server
-			if tt.expectError {
-				server = mockServer(`{"Message":"Internal Server Error"}`, http.StatusInternalServerError)
-			} else {
-				server = mockServer(tt.apiResponse, http.StatusOK)
+			if input.APIResponse != "" {
+				server := mockServer(input.APIResponse, input.StatusCode)
+				defer server.Close()
+				client.baseURL = server.URL
 			}
 
-			defer server.Close()
-			client.baseURL = server.URL
+			// Execution
+			result, err := client.GetUserName(input.UserID)
 
-			result, err := client.GetUserName(tt.userID)
-
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err, "GetUserName should return an error")
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err, "GetUserName should not return an error")
-				assert.Equal(t, tt.expectedName, result, "GetUserName returned unexpected result")
+				assert.Equal(t, expected.ExpectedName, result, "GetUserName returned unexpected result")
 			}
 		})
 	}
 }
 
 func TestDeleteMovie(t *testing.T) {
-	tests := []struct {
-		name          string
-		statusCode    int
-		response      string
-		expectError   bool
-		errorContains string
-	}{
-		{
-			name:        "Delete 204 No Content",
-			statusCode:  http.StatusNoContent,
-			response:    "",
-			expectError: false,
-		},
-		{
-			name:        "Delete 200 OK",
-			statusCode:  http.StatusOK,
-			response:    "",
-			expectError: false,
-		},
-		{
-			name:          "Delete not found returns error",
-			statusCode:    http.StatusNotFound,
-			response:      `{"Message":"Not Found"}`,
-			expectError:   true,
-			errorContains: "unexpected status code 404",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				StatusCode  int    `json:"statusCode"`
+				Response    string `json:"response"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			server := mockServer(tt.response, tt.statusCode)
+			server := mockServer(input.Response, input.StatusCode)
 			defer server.Close()
-
 			client.baseURL = server.URL
 
+			// Execution
 			err := client.DeleteMovie("movie-123")
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errorContains)
 			} else {
 				assert.NoError(t, err)
 			}
-		})
-	}
-}
-func TestNewClient(t *testing.T) {
-	tests := []struct {
-		name   string
-		url    string
-		apiKey string
-		userID string
-	}{
-		{
-			name:   "Creates client with valid parameters",
-			url:    "http://localhost:8096",
-			apiKey: "test-api-key",
-			userID: "user-123",
-		},
-		{
-			name:   "Creates client with empty string values",
-			url:    "",
-			apiKey: "",
-			userID: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := NewClient(tt.url, tt.apiKey, tt.userID)
-
-			assert.NotNil(t, client)
-			assert.Equal(t, tt.url, client.baseURL)
-			assert.Equal(t, tt.apiKey, client.apiKey)
-			assert.Equal(t, tt.userID, client.userID)
-			assert.NotNil(t, client.client)
-			assert.NotNil(t, client.userCache)
-			assert.Equal(t, 0, len(client.userCache))
 		})
 	}
 }
 
 func TestGetLibraries(t *testing.T) {
-	tests := []struct {
-		name          string
-		userID        string
-		apiResponse   string
-		statusCode    int
-		expectError   bool
-		errorContains string
-		expectedCount int
-	}{
-		{
-			name:          "Fetches libraries successfully",
-			userID:        "user-123",
-			apiResponse:   `{"Items": [{"Id": "lib-1", "Name": "Movies"}, {"Id": "lib-2", "Name": "TV Shows"}]}`,
-			statusCode:    http.StatusOK,
-			expectError:   false,
-			expectedCount: 2,
-		},
-		{
-			name:          "Handles empty libraries",
-			userID:        "user-123",
-			apiResponse:   `{"Items": []}`,
-			statusCode:    http.StatusOK,
-			expectError:   false,
-			expectedCount: 0,
-		},
-		{
-			name:          "Handles API error",
-			userID:        "user-123",
-			apiResponse:   `{"Message": "Internal Server Error"}`,
-			statusCode:    http.StatusInternalServerError,
-			expectError:   true,
-			errorContains: "failed to fetch libraries",
-		},
-		{
-			name:          "Handles missing user ID",
-			userID:        "",
-			apiResponse:   ``,
-			statusCode:    http.StatusOK,
-			expectError:   true,
-			errorContains: "user ID not set",
-		},
-		{
-			name:          "Handles invalid JSON response",
-			userID:        "user-123",
-			apiResponse:   `invalid json`,
-			statusCode:    http.StatusOK,
-			expectError:   true,
-			errorContains: "failed to parse",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				UserID      string `json:"userID"`
+				APIResponse string `json:"apiResponse"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ExpectedCount int `json:"expectedCount"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			if tt.userID != "" {
-				client.userID = tt.userID
-			} else {
-				client.userID = ""
+			if input.UserID != "" {
+				client.userID = input.UserID
 			}
 
-			if tt.userID != "" {
-				server := mockServer(tt.apiResponse, tt.statusCode)
+			if input.UserID != "" && input.APIResponse != "" {
+				server := mockServer(input.APIResponse, input.StatusCode)
 				defer server.Close()
 				client.baseURL = server.URL
 			}
 
+			// Execution
 			result, err := client.GetLibraries()
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err, "GetLibraries should return an error")
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedCount, len(result))
+				assert.Equal(t, expected.ExpectedCount, len(result))
 			}
 		})
 	}
 }
 
 func TestGetAllUsers(t *testing.T) {
-	tests := []struct {
-		name          string
-		apiResponse   string
-		statusCode    int
-		expectError   bool
-		errorContains string
-		expectedCount int
-	}{
-		{
-			name:          "Fetches all users successfully",
-			apiResponse:   `[{"Id": "user-1", "Name": "John Doe"}, {"Id": "user-2", "Name": "Jane Smith"}]`,
-			statusCode:    http.StatusOK,
-			expectError:   false,
-			expectedCount: 2,
-		},
-		{
-			name:          "Fetches single user",
-			apiResponse:   `[{"Id": "user-1", "Name": "John Doe"}]`,
-			statusCode:    http.StatusOK,
-			expectError:   false,
-			expectedCount: 1,
-		},
-		{
-			name:          "Handles empty user list",
-			apiResponse:   `[]`,
-			statusCode:    http.StatusOK,
-			expectError:   false,
-			expectedCount: 0,
-		},
-		{
-			name:          "Handles API error",
-			apiResponse:   `{"Message": "Internal Server Error"}`,
-			statusCode:    http.StatusInternalServerError,
-			expectError:   true,
-			errorContains: "failed to fetch users",
-		},
-		{
-			name:        "Handles invalid JSON",
-			apiResponse: `invalid json`,
-			statusCode:  http.StatusOK,
-			expectError: true,
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				APIResponse string `json:"apiResponse"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ExpectedCount int `json:"expectedCount"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			server := mockServer(tt.apiResponse, tt.statusCode)
+			server := mockServer(input.APIResponse, input.StatusCode)
 			defer server.Close()
 			client.baseURL = server.URL
 
+			// Execution
 			result, err := client.GetAllUsers()
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err, "GetAllUsers should return an error")
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedCount, len(result))
+				assert.Equal(t, expected.ExpectedCount, len(result))
 				// Verify cache is populated
-				assert.Equal(t, tt.expectedCount, len(client.userCache))
+				assert.Equal(t, expected.ExpectedCount, len(client.userCache))
 			}
 		})
 	}
 }
 
 func TestGetMovieUserData(t *testing.T) {
-	tests := []struct {
-		name          string
-		movieID       string
-		userID        string
-		apiResponse   string
-		statusCode    int
-		expectError   bool
-		errorContains string
-		expectPlayed  bool
-	}{
-		{
-			name:         "Fetches user data successfully (movie played)",
-			movieID:      "movie-123",
-			userID:       "user-456",
-			apiResponse:  `{"Played": true, "PlayCount": 2, "LastPlayedDate": "2024-01-01"}`,
-			statusCode:   http.StatusOK,
-			expectError:  false,
-			expectPlayed: true,
-		},
-		{
-			name:         "Fetches user data successfully (movie not played)",
-			movieID:      "movie-123",
-			userID:       "user-456",
-			apiResponse:  `{"Played": false, "PlayCount": 0}`,
-			statusCode:   http.StatusOK,
-			expectError:  false,
-			expectPlayed: false,
-		},
-		{
-			name:          "Handles API error",
-			movieID:       "movie-123",
-			userID:        "user-456",
-			apiResponse:   `{"Message": "Not Found"}`,
-			statusCode:    http.StatusNotFound,
-			expectError:   true,
-			errorContains: "failed to fetch user play status",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID     string `json:"movieID"`
+				UserID      string `json:"userID"`
+				APIResponse string `json:"apiResponse"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ExpectPlayed bool `json:"expectPlayed"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			server := mockServer(tt.apiResponse, tt.statusCode)
+			server := mockServer(input.APIResponse, input.StatusCode)
 			defer server.Close()
 			client.baseURL = server.URL
 
-			result, err := client.GetMovieUserData(tt.movieID, tt.userID)
+			// Execution
+			result, err := client.GetMovieUserData(input.MovieID, input.UserID)
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err)
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectPlayed, result.Played)
+				assert.Equal(t, expected.ExpectPlayed, result.Played)
 			}
 		})
 	}
 }
 
 func TestGetMovieDetails(t *testing.T) {
-	tests := []struct {
-		name          string
-		movieID       string
-		apiResponse   string
-		statusCode    int
-		expectError   bool
-		errorContains string
-		expectedName  string
-	}{
-		{
-			name:         "Fetches movie details successfully",
-			movieID:      "movie-123",
-			apiResponse:  `{"Id": "movie-123", "Name": "The Matrix", "ProductionYear": 1999, "Path": "/movies/the-matrix.mkv"}`,
-			statusCode:   http.StatusOK,
-			expectError:  false,
-			expectedName: "The Matrix",
-		},
-		{
-			name:          "Handles movie not found",
-			movieID:       "movie-999",
-			apiResponse:   `{"Message": "Not Found"}`,
-			statusCode:    http.StatusNotFound,
-			expectError:   true,
-			errorContains: "failed to fetch movie details",
-		},
-		{
-			name:          "Handles API error",
-			movieID:       "movie-123",
-			apiResponse:   `{"Message": "Internal Server Error"}`,
-			statusCode:    http.StatusInternalServerError,
-			expectError:   true,
-			errorContains: "failed to fetch movie details",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID     string `json:"movieID"`
+				APIResponse string `json:"apiResponse"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ExpectedName string `json:"expectedName"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			server := mockServer(tt.apiResponse, tt.statusCode)
+			server := mockServer(input.APIResponse, input.StatusCode)
 			defer server.Close()
 			client.baseURL = server.URL
 
-			result, err := client.GetMovieDetails(tt.movieID)
+			// Execution
+			result, err := client.GetMovieDetails(input.MovieID)
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err)
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedName, result.Name)
+				assert.Equal(t, expected.ExpectedName, result.Name)
 			}
 		})
 	}
 }
 
 func TestGetMovieName(t *testing.T) {
-	tests := []struct {
-		name          string
-		movieID       string
-		apiResponse   string
-		statusCode    int
-		expectError   bool
-		errorContains string
-		expectedName  string
-	}{
-		{
-			name:         "Returns movie name successfully",
-			movieID:      "movie-123",
-			apiResponse:  `{"Name": "The Matrix"}`,
-			statusCode:   http.StatusOK,
-			expectError:  false,
-			expectedName: "The Matrix",
-		},
-		{
-			name:          "Handles movie not found",
-			movieID:       "movie-999",
-			apiResponse:   `{"Message": "Not Found"}`,
-			statusCode:    http.StatusNotFound,
-			expectError:   true,
-			errorContains: "failed to fetch movie name",
-		},
-		{
-			name:         "Handles empty name and falls back",
-			movieID:      "movie-123",
-			apiResponse:  `{"Name": ""}`,
-			statusCode:   http.StatusOK,
-			expectError:  false,
-			expectedName: "",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID     string `json:"movieID"`
+				APIResponse string `json:"apiResponse"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), struct {
+				ExpectedName string `json:"expectedName"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			server := mockServer(tt.apiResponse, tt.statusCode)
+			server := mockServer(input.APIResponse, input.StatusCode)
 			defer server.Close()
 			client.baseURL = server.URL
 
-			result, err := client.GetMovieName(tt.movieID)
+			// Execution
+			result, err := client.GetMovieName(input.MovieID)
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err)
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedName, result)
+				assert.Equal(t, expected.ExpectedName, result)
 			}
 		})
 	}
 }
 
 func TestMarkMovieAsPlayed(t *testing.T) {
-	tests := []struct {
-		name          string
-		movieID       string
-		userID        string
-		statusCode    int
-		expectError   bool
-		errorContains string
-	}{
-		{
-			name:        "Marks movie as played with 204 response",
-			movieID:     "movie-123",
-			userID:      "user-456",
-			statusCode:  http.StatusNoContent,
-			expectError: false,
-		},
-		{
-			name:        "Marks movie as played with 200 response",
-			movieID:     "movie-123",
-			userID:      "user-456",
-			statusCode:  http.StatusOK,
-			expectError: false,
-		},
-		{
-			name:          "Handles API error",
-			movieID:       "movie-123",
-			userID:        "user-456",
-			statusCode:    http.StatusBadRequest,
-			expectError:   true,
-			errorContains: "unexpected status code",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID     string `json:"movieID"`
+				UserID      string `json:"userID"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+			}{})
+
+			// Setup
 			client := mockClient()
-			server := mockServer("", tt.statusCode)
+			server := mockServer("", input.StatusCode)
 			defer server.Close()
 			client.baseURL = server.URL
 
-			err := client.MarkMovieAsPlayed(tt.movieID, tt.userID, "Test Movie", "Test User")
+			// Execution
+			err := client.MarkMovieAsPlayed(input.MovieID, input.UserID, "Test Movie", "Test User")
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err)
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
 			}
@@ -577,45 +375,21 @@ func TestMarkMovieAsPlayed(t *testing.T) {
 }
 
 func TestCheckHTTPResponse(t *testing.T) {
-	tests := []struct {
-		name             string
-		statusCode       int
-		expectedStatuses []int
-		expectError      bool
-		errorContains    string
-	}{
-		{
-			name:             "Success with matching status code",
-			statusCode:       200,
-			expectedStatuses: []int{200},
-			expectError:      false,
-		},
-		{
-			name:             "Success with multiple valid statuses",
-			statusCode:       204,
-			expectedStatuses: []int{200, 204},
-			expectError:      false,
-		},
-		{
-			name:             "Error with mismatched status code",
-			statusCode:       400,
-			expectedStatuses: []int{200},
-			expectError:      true,
-			errorContains:    "HTTP request failed",
-		},
-		{
-			name:             "Error with unknown status code",
-			statusCode:       418,
-			expectedStatuses: []int{200},
-			expectError:      true,
-			errorContains:    "HTTP request failed",
-		},
-	}
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				StatusCode       int   `json:"statusCode"`
+				ExpectedStatuses []int `json:"expectedStatuses"`
+				ExpectError      bool  `json:"expectError"`
+			}{})
+
+			// Setup
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tt.statusCode)
+				w.WriteHeader(input.StatusCode)
 			}))
 			defer server.Close()
 
@@ -623,13 +397,12 @@ func TestCheckHTTPResponse(t *testing.T) {
 			resp, err := client.R().Get(server.URL)
 			assert.NoError(t, err)
 
-			err = checkHTTPResponse(resp, tt.expectedStatuses...)
+			// Execution
+			err = checkHTTPResponse(resp, input.ExpectedStatuses...)
 
-			if tt.expectError {
+			// Validation
+			if input.ExpectError {
 				assert.Error(t, err)
-				if tt.errorContains != "" {
-					assert.Contains(t, err.Error(), tt.errorContains)
-				}
 			} else {
 				assert.NoError(t, err)
 			}
