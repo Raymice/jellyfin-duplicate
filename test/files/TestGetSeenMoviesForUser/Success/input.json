@@ -1,0 +1,7 @@
+{
+    "userID": "user1",
+    "response": "{\"Items\":[{\"Id\":\"movie1\",\"Name\":\"Seen Movie\",\"ProductionYear\":2023,\"Path\":\"/movies/seen\"}],\"TotalRecordCount\":1}",
+    "statusCode": 200,
+    "expectError": false,
+    "expectEmpty": false
+}

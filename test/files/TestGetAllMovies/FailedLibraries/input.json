@@ -1,0 +1,7 @@
+{
+    "librariesResponse": "{\"error\":\"Unauthorized\"}",
+    "moviesResponse": "",
+    "librariesStatus": 401,
+    "moviesStatus": 200,
+    "expectError": true
+}

@@ -374,6 +374,93 @@ func TestMarkMovieAsPlayed(t *testing.T) {
 	}
 }
 
+func TestGetAllMovies(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				LibrariesResponse string `json:"librariesResponse"`
+				MoviesResponse    string `json:"moviesResponse"`
+				LibrariesStatus   int    `json:"librariesStatus"`
+				MoviesStatus      int    `json:"moviesStatus"`
+				ExpectError       bool   `json:"expectError"`
+			}{})
+
+			// Setup
+			requestCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == "/Users/user123/Views" {
+					w.WriteHeader(input.LibrariesStatus)
+					_, _ = w.Write([]byte(input.LibrariesResponse))
+				} else {
+					w.WriteHeader(input.MoviesStatus)
+					_, _ = w.Write([]byte(input.MoviesResponse))
+					requestCount++
+				}
+			}))
+			defer server.Close()
+
+			client := NewClient(server.URL, "test-key", "user123")
+
+			// Execution
+			movies, err := client.GetAllMovies()
+
+			// Validation
+			if input.ExpectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Greater(t, len(movies), 0, "Should return at least one movie")
+			}
+		})
+	}
+}
+
+func TestGetSeenMoviesForUser(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				UserID      string `json:"userID"`
+				Response    string `json:"response"`
+				StatusCode  int    `json:"statusCode"`
+				ExpectError bool   `json:"expectError"`
+				ExpectEmpty bool   `json:"expectEmpty"`
+			}{})
+
+			// Setup
+			server := mockServer(input.Response, input.StatusCode)
+			defer server.Close()
+
+			client := NewClient(server.URL, "test-key", "admin-user")
+
+			// Execution
+			movies, err := client.GetSeenMoviesForUser(input.UserID)
+
+			// Validation
+			if input.ExpectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if input.ExpectEmpty {
+					// Empty response returns nil slice in Go
+					assert.True(t, movies == nil || len(movies) == 0, "Movies should be nil or empty")
+				} else {
+					assert.NotNil(t, movies)
+					assert.Greater(t, len(movies), 0)
+				}
+			}
+		})
+	}
+}
+
 func TestCheckHTTPResponse(t *testing.T) {
 	functionName := test.GetFuncName()
 	useCases := test.GetTestUseCases(functionName)
