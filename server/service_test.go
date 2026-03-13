@@ -119,6 +119,24 @@ func TestServerService_GetMultiUserPlayStatus(t *testing.T) {
 	}
 }
 
+func TestServerService_HasIdenticalPlayStatus(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			movie1 := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/movie1.json", functionName, useCase), serverModels.MovieLightStatusDTO{})
+			movie2 := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/movie2.json", functionName, useCase), serverModels.MovieLightStatusDTO{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), false)
+			// Execution
+			got := server.NewService(&jellyfinClients.Client{}).HasIdenticalPlayStatus(movie1, movie2)
+			// Validation
+			assert.Equal(t, expected, got, "Should return the expected identical play status result")
+		})
+	}
+}
+
 func TestIsUUIDFormtatted(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
