@@ -1,0 +1,42 @@
+[
+    {
+        "Id": "movie1",
+        "Name": "Inception",
+        "ProductionYear": 2010,
+        "Path": "/movies/Inception.mkv",
+        "UserPlayStatuses": [
+            {
+                "UserId": "user1",
+                "UserName": "Alice",
+                "Played": true,
+                "PlayCount": 0
+            },
+            {
+                "UserId": "user2",
+                "UserName": "Bob",
+                "Played": false,
+                "PlayCount": 0
+            }
+        ]
+    },
+    {
+        "Id": "movie2",
+        "Name": "Interstellar",
+        "ProductionYear": 2014,
+        "Path": "/movies/Interstellar.mkv",
+        "UserPlayStatuses": [
+            {
+                "UserId": "user1",
+                "UserName": "Alice",
+                "Played": false,
+                "PlayCount": 0
+            },
+            {
+                "UserId": "user2",
+                "UserName": "Bob",
+                "Played": false,
+                "PlayCount": 0
+            }
+        ]
+    }
+]

@@ -1,0 +1,8 @@
+[
+    {
+        "Id": "movie1",
+        "Name": "Inception",
+        "ProductionYear": 2010,
+        "Path": "/movies/Inception.mkv"
+    }
+]
