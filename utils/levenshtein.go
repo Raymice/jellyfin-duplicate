@@ -36,7 +36,7 @@ func LevenshteinDistance(s1, s2 string) int {
 				cost = 1
 			}
 
-			distances[i][j] = min(
+			distances[i][j] = Min(
 				distances[i-1][j]+1,      // deletion
 				distances[i][j-1]+1,      // insertion
 				distances[i-1][j-1]+cost, // substitution
@@ -52,8 +52,8 @@ func LevenshteinDistance(s1, s2 string) int {
 // Note: File extensions are excluded from the comparison
 func CalculatePathSimilarity(path1, path2 string) int {
 	// Remove file extensions before comparison
-	path1WithoutExt := removeFileExtension(path1)
-	path2WithoutExt := removeFileExtension(path2)
+	path1WithoutExt := RemoveFileExtension(path1)
+	path2WithoutExt := RemoveFileExtension(path2)
 
 	// Implement Levenshtein distance algorithm
 	distance := LevenshteinDistance(path1WithoutExt, path2WithoutExt)
@@ -73,9 +73,9 @@ func CalculatePathSimilarity(path1, path2 string) int {
 	return similarity
 }
 
-// removeFileExtension removes the file extension from a path
+// RemoveFileExtension removes the file extension from a path
 // Example: "/movies/movie.mkv" → "/movies/movie"
-func removeFileExtension(path string) string {
+func RemoveFileExtension(path string) string {
 	// Find the last dot in the path
 	lastDotIndex := strings.LastIndex(path, ".")
 
@@ -97,8 +97,8 @@ func removeFileExtension(path string) string {
 	return path[:lastDotIndex]
 }
 
-// min returns the minimum of multiple integers
-func min(values ...int) int {
+// Min returns the minimum of multiple integers
+func Min(values ...int) int {
 	if len(values) == 0 {
 		return 0
 	}

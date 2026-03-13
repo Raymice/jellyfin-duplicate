@@ -446,3 +446,32 @@ func TestIsUUIDFormtatted(t *testing.T) {
 		})
 	}
 }
+
+func TestNewService(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "Creates service with fake client",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := &fakeJellyfinClient{}
+			service := server.NewService(fakeClient)
+
+			assert.NotNil(t, service, "Service should not be nil")
+		})
+	}
+}
+
+func (f *fakeJellyfinClient) GetSeenMoviesForUser(userID string) ([]apiModels.MovieLightAPI, error) {
+	if f.shouldError {
+		return nil, fmt.Errorf("%s", f.errorMessage)
+	}
+	if f.userSeenMovies == nil {
+		return []apiModels.MovieLightAPI{}, nil
+	}
+	return f.userSeenMovies[userID], nil
+}
