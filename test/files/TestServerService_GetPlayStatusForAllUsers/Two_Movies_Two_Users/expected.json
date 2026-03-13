@@ -1,0 +1,47 @@
+{
+    "Movie1": {
+        "Id": "movie1-id",
+        "Name": "The Avengers",
+        "ProductionYear": 2012,
+        "Path": "/movies/The_Avengers.mkv",
+        "MediaStreams": [],
+        "UserPlayStatuses": [
+            {
+                "UserId": "user1",
+                "UserName": "Current User",
+                "Played": true,
+                "PlayCount": 1
+            },
+            {
+                "UserId": "user2",
+                "UserName": "Current User",
+                "Played": false,
+                "PlayCount": 0
+            }
+        ]
+    },
+    "Movie2": {
+        "Id": "movie2-id",
+        "Name": "The Avengers",
+        "ProductionYear": 2012,
+        "Path": "/movies/The.Avengers.2012.mkv",
+        "MediaStreams": [],
+        "UserPlayStatuses": [
+            {
+                "UserId": "user1",
+                "UserName": "Current User",
+                "Played": false,
+                "PlayCount": 0
+            },
+            {
+                "UserId": "user2",
+                "UserName": "Current User",
+                "Played": true,
+                "PlayCount": 2
+            }
+        ]
+    },
+    "IsDuplicate": true,
+    "Similarity": 95,
+    "HasIdenticalPlayStatus": false
+}

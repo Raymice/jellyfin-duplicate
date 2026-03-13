@@ -1,0 +1,21 @@
+{
+    "Movie1": {
+        "Id": "movie1-id",
+        "Name": "The Avengers",
+        "ProductionYear": 2012,
+        "Path": "/movies/The_Avengers.mkv",
+        "MediaStreams": [],
+        "UserPlayStatuses": []
+    },
+    "Movie2": {
+        "Id": "movie2-id",
+        "Name": "The Avengers",
+        "ProductionYear": 2012,
+        "Path": "/movies/The.Avengers.2012.mkv",
+        "MediaStreams": [],
+        "UserPlayStatuses": []
+    },
+    "IsDuplicate": true,
+    "Similarity": 95,
+    "HasIdenticalPlayStatus": false
+}

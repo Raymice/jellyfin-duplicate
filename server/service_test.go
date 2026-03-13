@@ -17,25 +17,53 @@ type fakeJellyfinClient struct {
 	users          []apiModels.UserAPI
 	userSeenMovies map[string][]apiModels.MovieLightAPI
 	movieUserData  map[string]map[string]apiModels.UserDataAPI // movieID -> userID -> UserDataAPI
+	movieDetails   map[string]apiModels.MovieLightExtendedAPI  // movieID -> MovieLightExtendedAPI
+	movieNames     map[string]string                           // movieID -> movieName
+	userNames      map[string]string                           // userID -> userName
+	deletedMovies  []string                                    // track deleted movies
+	markedAsPlayed []string                                    // track marked as played calls
+	shouldError    bool
+	errorMessage   string
 }
 
 func (f *fakeJellyfinClient) GetAllMovies() ([]apiModels.MovieLightAPI, error) {
+	if f.shouldError {
+		return nil, fmt.Errorf("%s", f.errorMessage)
+	}
 	return f.movies, nil
 }
 
 func (f *fakeJellyfinClient) GetAllUsers() ([]apiModels.UserAPI, error) {
+	if f.shouldError {
+		return nil, fmt.Errorf("%s", f.errorMessage)
+	}
 	return f.users, nil
 }
 
 func (f *fakeJellyfinClient) GetSeenMoviesForAllUsers(users []apiModels.UserAPI) (map[string][]apiModels.MovieLightAPI, error) {
+	if f.shouldError {
+		return nil, fmt.Errorf("%s", f.errorMessage)
+	}
 	return f.userSeenMovies, nil
 }
 
 func (f *fakeJellyfinClient) GetMovieDetails(movieID string) (apiModels.MovieLightExtendedAPI, error) {
-	panic("not used in this test")
+	if f.shouldError {
+		return apiModels.MovieLightExtendedAPI{}, fmt.Errorf("%s", f.errorMessage)
+	}
+	if f.movieDetails == nil {
+		panic("movieDetails not set up in fake client")
+	}
+	if details, ok := f.movieDetails[movieID]; ok {
+		return details, nil
+	}
+	panic("movieID not found in fake client movieDetails")
 }
 
 func (f *fakeJellyfinClient) GetMovieUserData(movieID string, userID string) (apiModels.UserDataAPI, error) {
+	if f.shouldError {
+		return apiModels.UserDataAPI{}, fmt.Errorf("%s", f.errorMessage)
+	}
 	if f.movieUserData == nil {
 		panic("movieUserData not set up in fake client")
 	}
@@ -48,19 +76,51 @@ func (f *fakeJellyfinClient) GetMovieUserData(movieID string, userID string) (ap
 }
 
 func (f *fakeJellyfinClient) GetMovieName(movieID string) (string, error) {
-	panic("not used in this test")
+	if f.shouldError {
+		return "", fmt.Errorf("%s", f.errorMessage)
+	}
+	if f.movieNames == nil {
+		return "", fmt.Errorf("movie name not found")
+	}
+	if name, ok := f.movieNames[movieID]; ok {
+		return name, nil
+	}
+	return "", fmt.Errorf("movie name not found")
 }
 
 func (f *fakeJellyfinClient) GetUserName(userID string) (string, error) {
-	panic("not used in this test")
+	if f.shouldError {
+		return "", fmt.Errorf("%s", f.errorMessage)
+	}
+	if f.userNames == nil {
+		return "", fmt.Errorf("user name not found")
+	}
+	if name, ok := f.userNames[userID]; ok {
+		return name, nil
+	}
+	return "", fmt.Errorf("user name not found")
 }
 
 func (f *fakeJellyfinClient) DeleteMovie(movieID string) error {
-	panic("not used in this test")
+	if f.shouldError {
+		return fmt.Errorf("%s", f.errorMessage)
+	}
+	if f.deletedMovies == nil {
+		f.deletedMovies = []string{}
+	}
+	f.deletedMovies = append(f.deletedMovies, movieID)
+	return nil
 }
 
 func (f *fakeJellyfinClient) MarkMovieAsPlayed(movieID string, userID string, movieName string, userName string) error {
-	panic("not used in this test")
+	if f.shouldError {
+		return fmt.Errorf("%s", f.errorMessage)
+	}
+	if f.markedAsPlayed == nil {
+		f.markedAsPlayed = []string{}
+	}
+	f.markedAsPlayed = append(f.markedAsPlayed, fmt.Sprintf("%s:%s", movieID, userID))
+	return nil
 }
 
 func TestServerService_GetPlayStatusDiscrepancies(t *testing.T) {
@@ -175,6 +235,184 @@ func TestServerService_GetUserPlayStatus(t *testing.T) {
 			// Validation
 			assert.NoError(t, gotErr)
 			assert.Equal(t, expected, got, "Should return the expected user play status")
+		})
+	}
+}
+
+func TestServerService_GetPlayStatusForAllUsers(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			dup := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), serverModels.DuplicateResultDTO{})
+			users := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/users.json", functionName, useCase), []apiModels.UserAPI{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), serverModels.DuplicateResultDTO{})
+
+			// Setup fake client with users and user data for both movies
+			movieUserData := make(map[string]map[string]apiModels.UserDataAPI)
+
+			for _, user := range users {
+				// Load user data for movie 1
+				movie1UserData := test.ParseFromJsonFile(t,
+					fmt.Sprintf("%s/%s/%s_movie1_user_data.json", functionName, useCase, user.ID),
+					apiModels.UserDataAPI{})
+
+				// Load user data for movie 2
+				movie2UserData := test.ParseFromJsonFile(t,
+					fmt.Sprintf("%s/%s/%s_movie2_user_data.json", functionName, useCase, user.ID),
+					apiModels.UserDataAPI{})
+
+				if _, ok := movieUserData[dup.Movie1.ID]; !ok {
+					movieUserData[dup.Movie1.ID] = make(map[string]apiModels.UserDataAPI)
+				}
+				movieUserData[dup.Movie1.ID][user.ID] = movie1UserData
+
+				if _, ok := movieUserData[dup.Movie2.ID]; !ok {
+					movieUserData[dup.Movie2.ID] = make(map[string]apiModels.UserDataAPI)
+				}
+				movieUserData[dup.Movie2.ID][user.ID] = movie2UserData
+			}
+
+			fakeClient := &fakeJellyfinClient{
+				users:         users,
+				movieUserData: movieUserData,
+			}
+
+			// Execution
+			got, gotErr := server.NewService(fakeClient).GetPlayStatusForAllUsers(dup)
+
+			// Validation
+			assert.NoError(t, gotErr)
+			assert.Equal(t, expected.Movie1.UserPlayStatuses, got.Movie1.UserPlayStatuses, "Movie1 play statuses should match")
+			assert.Equal(t, expected.Movie2.UserPlayStatuses, got.Movie2.UserPlayStatuses, "Movie2 play statuses should match")
+		})
+	}
+}
+
+func TestServerService_FindDuplicates(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Load fixture data
+			allMovies := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/all_movies.json", functionName, useCase), []apiModels.MovieLightAPI{})
+			users := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/users.json", functionName, useCase), []apiModels.UserAPI{})
+			movieDetails := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/movie_details.json", functionName, useCase), map[string]apiModels.MovieLightExtendedAPI{})
+
+			// Load user play data
+			userSeenMovies := make(map[string][]apiModels.MovieLightAPI)
+			movieUserData := make(map[string]map[string]apiModels.UserDataAPI)
+
+			for _, user := range users {
+				userSeenMovies[user.ID] = test.ParseFromJsonFile(t,
+					fmt.Sprintf("%s/%s/%s_seen_movies.json", functionName, useCase, user.ID),
+					[]apiModels.MovieLightAPI{})
+
+				for _, movie := range allMovies {
+					if _, ok := movieUserData[movie.ID]; !ok {
+						movieUserData[movie.ID] = make(map[string]apiModels.UserDataAPI)
+					}
+					userData := test.ParseFromJsonFile(t,
+						fmt.Sprintf("%s/%s/%s_%s_user_data.json", functionName, useCase, user.ID, movie.ID),
+						apiModels.UserDataAPI{})
+					movieUserData[movie.ID][user.ID] = userData
+				}
+			}
+
+			// Setup fake client
+			fakeClient := &fakeJellyfinClient{
+				movies:         allMovies,
+				users:          users,
+				userSeenMovies: userSeenMovies,
+				movieUserData:  movieUserData,
+				movieDetails:   movieDetails,
+			}
+
+			// Execution
+			got, gotErr := server.NewService(fakeClient).FindDuplicates()
+
+			// Validation
+			assert.NoError(t, gotErr)
+			// Verify we got at least the expected number of duplicates
+			assert.True(t, len(got) > 0, "Should find at least one duplicate pair")
+			// Verify first duplicate has the right movies
+			assert.True(t, (got[0].Movie1.ID == "movie1" && got[0].Movie2.ID == "movie2") || (got[0].Movie1.ID == "movie2" && got[0].Movie2.ID == "movie1"),
+				"Should match the expected movie pair IDs")
+		})
+	}
+}
+
+func TestServerService_DeleteMovie(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Load input data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID      string `json:"movieId"`
+				ShouldError  bool   `json:"shouldError"`
+				ErrorMessage string `json:"errorMessage"`
+			}{})
+
+			fakeClient := &fakeJellyfinClient{
+				shouldError:  input.ShouldError,
+				errorMessage: input.ErrorMessage,
+			}
+
+			// Execution
+			err := server.NewService(fakeClient).DeleteMovie(input.MovieID)
+
+			// Validation
+			if input.ShouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Contains(t, fakeClient.deletedMovies, input.MovieID, "Movie should be marked as deleted")
+			}
+		})
+	}
+}
+
+func TestServerService_MarkMovieAsSeen(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Load input data
+			input := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID      string `json:"movieId"`
+				UserID       string `json:"userId"`
+				ShouldError  bool   `json:"shouldError"`
+				ErrorMessage string `json:"errorMessage"`
+			}{})
+
+			fakeClient := &fakeJellyfinClient{
+				movieNames: map[string]string{
+					input.MovieID: "Test Movie",
+				},
+				userNames: map[string]string{
+					input.UserID: "Test User",
+				},
+				shouldError:  input.ShouldError,
+				errorMessage: input.ErrorMessage,
+			}
+
+			// Execution
+			err := server.NewService(fakeClient).MarkMovieAsSeen(input.MovieID, input.UserID)
+
+			// Validation
+			if input.ShouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				expectedCall := fmt.Sprintf("%s:%s", input.MovieID, input.UserID)
+				assert.Contains(t, fakeClient.markedAsPlayed, expectedCall, "Movie should be marked as played")
+			}
 		})
 	}
 }
