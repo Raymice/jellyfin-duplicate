@@ -16,6 +16,7 @@ type fakeJellyfinClient struct {
 	movies         []apiModels.MovieLightAPI
 	users          []apiModels.UserAPI
 	userSeenMovies map[string][]apiModels.MovieLightAPI
+	movieUserData  map[string]map[string]apiModels.UserDataAPI // movieID -> userID -> UserDataAPI
 }
 
 func (f *fakeJellyfinClient) GetAllMovies() ([]apiModels.MovieLightAPI, error) {
@@ -35,7 +36,15 @@ func (f *fakeJellyfinClient) GetMovieDetails(movieID string) (apiModels.MovieLig
 }
 
 func (f *fakeJellyfinClient) GetMovieUserData(movieID string, userID string) (apiModels.UserDataAPI, error) {
-	panic("not used in this test")
+	if f.movieUserData == nil {
+		panic("movieUserData not set up in fake client")
+	}
+	if userMap, ok := f.movieUserData[movieID]; ok {
+		if userData, ok := userMap[userID]; ok {
+			return userData, nil
+		}
+	}
+	panic("movieID or userID not found in fake client")
 }
 
 func (f *fakeJellyfinClient) GetMovieName(movieID string) (string, error) {
@@ -133,6 +142,39 @@ func TestServerService_HasIdenticalPlayStatus(t *testing.T) {
 			got := server.NewService(&jellyfinClients.Client{}).HasIdenticalPlayStatus(movie1, movie2)
 			// Validation
 			assert.Equal(t, expected, got, "Should return the expected identical play status result")
+		})
+	}
+}
+
+func TestServerService_GetUserPlayStatus(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			// Data
+			movieID := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/input.json", functionName, useCase), struct {
+				MovieID  string                `json:"movieId"`
+				UserID   string                `json:"userId"`
+				UserData apiModels.UserDataAPI `json:"userData"`
+			}{})
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), serverModels.UserPlayStatusDTO{})
+
+			// Setup fake client with user data
+			fakeClient := &fakeJellyfinClient{
+				movieUserData: map[string]map[string]apiModels.UserDataAPI{
+					movieID.MovieID: {
+						movieID.UserID: movieID.UserData,
+					},
+				},
+			}
+
+			// Execution
+			got, gotErr := server.NewService(fakeClient).GetUserPlayStatus(movieID.MovieID, movieID.UserID)
+
+			// Validation
+			assert.NoError(t, gotErr)
+			assert.Equal(t, expected, got, "Should return the expected user play status")
 		})
 	}
 }

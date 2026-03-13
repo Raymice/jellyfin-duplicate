@@ -1,0 +1,10 @@
+{
+    "movieId": "movie123",
+    "userId": "user1",
+    "userData": {
+        "Played": true,
+        "PlaybackPositionTicks": 0,
+        "PlayCount": 2,
+        "LastPlayedDate": "2026-03-12T00:00:00Z"
+    }
+}
