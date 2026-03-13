@@ -12,6 +12,48 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type fakeJellyfinClient struct {
+	movies         []apiModels.MovieLightAPI
+	users          []apiModels.UserAPI
+	userSeenMovies map[string][]apiModels.MovieLightAPI
+}
+
+func (f *fakeJellyfinClient) GetAllMovies() ([]apiModels.MovieLightAPI, error) {
+	return f.movies, nil
+}
+
+func (f *fakeJellyfinClient) GetAllUsers() ([]apiModels.UserAPI, error) {
+	return f.users, nil
+}
+
+func (f *fakeJellyfinClient) GetSeenMoviesForAllUsers(users []apiModels.UserAPI) (map[string][]apiModels.MovieLightAPI, error) {
+	return f.userSeenMovies, nil
+}
+
+func (f *fakeJellyfinClient) GetMovieDetails(movieID string) (apiModels.MovieLightExtendedAPI, error) {
+	panic("not used in this test")
+}
+
+func (f *fakeJellyfinClient) GetMovieUserData(movieID string, userID string) (apiModels.UserDataAPI, error) {
+	panic("not used in this test")
+}
+
+func (f *fakeJellyfinClient) GetMovieName(movieID string) (string, error) {
+	panic("not used in this test")
+}
+
+func (f *fakeJellyfinClient) GetUserName(userID string) (string, error) {
+	panic("not used in this test")
+}
+
+func (f *fakeJellyfinClient) DeleteMovie(movieID string) error {
+	panic("not used in this test")
+}
+
+func (f *fakeJellyfinClient) MarkMovieAsPlayed(movieID string, userID string, movieName string, userName string) error {
+	panic("not used in this test")
+}
+
 func TestServerService_GetPlayStatusDiscrepancies(t *testing.T) {
 
 	functionName := test.GetFuncName()
@@ -50,6 +92,29 @@ func TestServerService_ReconcilePlayStatusWithAllMovies(t *testing.T) {
 			// Validation
 			assert.ElementsMatch(t, expected, got, "Should return the expected reconciled play status for all movies and users")
 			assert.Nil(t, gotErr, "Expected no error but got: %v", gotErr)
+		})
+	}
+}
+
+func TestServerService_GetMultiUserPlayStatus(t *testing.T) {
+	functionName := test.GetFuncName()
+	useCases := test.GetTestUseCases(functionName)
+
+	for _, useCase := range useCases {
+		t.Run(useCase, func(t *testing.T) {
+			allMovies := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/all_movies.json", functionName, useCase), []apiModels.MovieLightAPI{})
+			users := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/users.json", functionName, useCase), []apiModels.UserAPI{})
+			userSeenMovies := make(map[string][]apiModels.MovieLightAPI)
+			for _, user := range users {
+				userSeenMovies[user.ID] = test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/%s_seen_movies.json", functionName, useCase, user.ID), []apiModels.MovieLightAPI{})
+			}
+			expected := test.ParseFromJsonFile(t, fmt.Sprintf("%s/%s/expected.json", functionName, useCase), []serverModels.MovieLightStatusDTO{})
+
+			service := server.NewService(&fakeJellyfinClient{movies: allMovies, users: users, userSeenMovies: userSeenMovies})
+			got, gotErr := service.GetMultiUserPlayStatus()
+
+			assert.NoError(t, gotErr)
+			assert.ElementsMatch(t, expected, got)
 		})
 	}
 }
