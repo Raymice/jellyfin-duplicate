@@ -1,6 +1,6 @@
 profile: '' # set via github action
 threshold:
-  total: 80
+  total: 90
 exclude:
   paths:
     - main\.go$
