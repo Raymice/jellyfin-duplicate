@@ -1,0 +1,20 @@
+{
+    "Id": "movie1",
+    "Name": "Test Movie",
+    "ProductionYear": 2020,
+    "Path": "/path/to/movie1.mkv",
+    "UserPlayStatuses": [
+        {
+            "UserId": "user1",
+            "UserName": "User One",
+            "Played": true,
+            "PlayCount": 1
+        },
+        {
+            "UserId": "user2",
+            "UserName": "User Two",
+            "Played": false,
+            "PlayCount": 0
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+{
+    "userID": "user2",
+    "response": "{\"Items\":[],\"TotalRecordCount\":0}",
+    "statusCode": 200,
+    "expectError": false,
+    "expectEmpty": true
+}

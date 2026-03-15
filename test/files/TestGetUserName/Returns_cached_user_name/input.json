@@ -1,0 +1,7 @@
+{
+    "userID": "user-123",
+    "cachedName": "John Doe",
+    "apiResponse": "",
+    "statusCode": 200,
+    "expectError": false
+}

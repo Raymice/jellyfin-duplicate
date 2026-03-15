@@ -1,0 +1,7 @@
+{
+    "userID": "invalid-user",
+    "response": "{\"error\":\"User not found\"}",
+    "statusCode": 404,
+    "expectError": true,
+    "expectEmpty": false
+}

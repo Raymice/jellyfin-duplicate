@@ -1,0 +1,16 @@
+[
+    {
+        "Id": "user1",
+        "Name": "Alice",
+        "HasPassword": true,
+        "LastLoginDate": "2026-03-12T00:00:00Z",
+        "LastActivityDate": "2026-03-12T00:00:00Z"
+    },
+    {
+        "Id": "user2",
+        "Name": "Bob",
+        "HasPassword": true,
+        "LastLoginDate": "2026-03-11T00:00:00Z",
+        "LastActivityDate": "2026-03-11T00:00:00Z"
+    }
+]

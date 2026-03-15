@@ -1,0 +1,5 @@
+{
+  "apiResponse": "{\"Message\":\"Error\"}",
+  "statusCode": 500,
+  "expectError": true
+}

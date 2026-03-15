@@ -1,0 +1,8 @@
+{
+    "librariesResponse": "{\"Items\":[]}",
+    "moviesResponse": "",
+    "librariesStatus": 200,
+    "moviesStatus": 200,
+    "expectError": false,
+    "expectEmpty": true
+}

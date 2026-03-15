@@ -1,0 +1,5 @@
+{
+  "apiResponse": "[{\"Id\":\"user-1\",\"Name\":\"John\"}]",
+  "statusCode": 200,
+  "expectError": false
+}

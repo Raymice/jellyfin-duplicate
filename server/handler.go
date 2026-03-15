@@ -2,9 +2,8 @@ package server
 
 import (
 	"fmt"
-	jellyfinClients "jellyfin-duplicate/client/jellyfin/http"
+	jellyfinHTTP "jellyfin-duplicate/client/jellyfin/http"
 	serverModels "jellyfin-duplicate/server/models"
-
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +15,7 @@ type Handler struct {
 	serverService *ServerService
 }
 
-func NewHandler(client *jellyfinClients.Client) *Handler {
+func NewHandler(client jellyfinHTTP.JellyfinClient) *Handler {
 	serverService := NewService(client)
 	return &Handler{serverService: serverService}
 }

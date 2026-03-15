@@ -1,0 +1,7 @@
+[
+    {
+        "Id": "user1",
+        "Name": "Alice",
+        "HasPassword": true
+    }
+]

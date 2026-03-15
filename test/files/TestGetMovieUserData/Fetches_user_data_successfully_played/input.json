@@ -1,0 +1,7 @@
+{
+  "movieID": "movie-123",
+  "userID": "user-456",
+  "apiResponse": "{\"Played\":true,\"PlayCount\":2}",
+  "statusCode": 200,
+  "expectError": false
+}

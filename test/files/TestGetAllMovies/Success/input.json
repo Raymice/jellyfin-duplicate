@@ -1,0 +1,7 @@
+{
+    "librariesResponse": "{\"Items\":[{\"Id\":\"lib1\",\"Name\":\"Movies\"}]}",
+    "moviesResponse": "{\"Items\":[{\"Id\":\"movie1\",\"Name\":\"Test Movie\",\"ProductionYear\":2023,\"Path\":\"/movies/test\"}],\"TotalRecordCount\":1}",
+    "librariesStatus": 200,
+    "moviesStatus": 200,
+    "expectError": false
+}

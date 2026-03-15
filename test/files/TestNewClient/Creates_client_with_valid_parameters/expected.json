@@ -1,0 +1,7 @@
+{
+    "baseURL": "http://localhost:8096",
+    "apiKey": "test-api-key",
+    "userID": "user-123",
+    "userCacheEmpty": true,
+    "hasClient": true
+}

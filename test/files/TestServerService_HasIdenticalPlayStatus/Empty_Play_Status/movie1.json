@@ -1,0 +1,7 @@
+{
+    "Id": "movie1",
+    "Name": "Test Movie",
+    "ProductionYear": 2020,
+    "Path": "/path/to/movie1.mkv",
+    "UserPlayStatuses": []
+}

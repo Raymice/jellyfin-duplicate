@@ -5,6 +5,9 @@ import (
 	confServices "jellyfin-duplicate/configuration/services"
 	server "jellyfin-duplicate/server"
 	"net/http"
+	"path"
+	"path/filepath"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -70,4 +73,10 @@ func main() {
 	if err := r.Run(port); err != nil {
 		logrus.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func RootDir() string {
+	_, b, _, _ := runtime.Caller(0)
+	d := path.Join(path.Dir(b))
+	return filepath.Dir(d)
 }

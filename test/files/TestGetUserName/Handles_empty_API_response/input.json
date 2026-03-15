@@ -1,0 +1,7 @@
+{
+  "userID": "user-empty",
+  "cachedName": "",
+  "apiResponse": "{\"Name\":\"\"}",
+  "statusCode": 200,
+  "expectError": false
+}

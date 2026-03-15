@@ -1,0 +1,7 @@
+{
+    "librariesResponse": "{\"Items\":[{\"Id\":\"lib1\",\"Name\":\"Movies\"},{\"Id\":\"lib2\",\"Name\":\"TV\"}]}",
+    "moviesResponse": "{\"Items\":[{\"Id\":\"movie1\",\"Name\":\"Movie 1\",\"ProductionYear\":2023,\"Path\":\"/movies/1\"},{\"Id\":\"movie2\",\"Name\":\"Movie 2\",\"ProductionYear\":2023,\"Path\":\"/movies/2\"},{\"Id\":\"movie3\",\"Name\":\"Movie 3\",\"ProductionYear\":2023,\"Path\":\"/movies/3\"}],\"TotalRecordCount\":3}",
+    "librariesStatus": 200,
+    "moviesStatus": 200,
+    "expectError": false
+}

@@ -28,30 +28,6 @@ var httpStatusDescriptions = map[int]string{
 	504: "Gateway Timeout",
 }
 
-// checkHTTPResponse checks the HTTP response status code and returns an error if not successful
-func checkHTTPResponse(resp *resty.Response, expectedStatusCodes ...int) error {
-	statusCode := resp.StatusCode()
-
-	// Check if status code is in the expected list
-	for _, expectedCode := range expectedStatusCodes {
-		if statusCode == expectedCode {
-			return nil // Success
-		}
-	}
-
-	// Get status description
-	description := httpStatusDescriptions[statusCode]
-	if description == "" {
-		description = "Unknown Status"
-	}
-
-	// Log the error with response details
-	logrus.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
-	logrus.Debugf("Response body: %s", string(resp.Body()))
-
-	return fmt.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
-}
-
 type Client struct {
 	baseURL    string
 	apiKey     string
@@ -59,6 +35,18 @@ type Client struct {
 	client     *resty.Client
 	userCache  map[string]string // userID -> userName cache
 	cacheMutex sync.Mutex        // mutex to protect cache access
+}
+
+type JellyfinClient interface {
+	GetAllMovies() ([]models.MovieLightAPI, error)
+	GetAllUsers() ([]models.UserAPI, error)
+	GetSeenMoviesForAllUsers(users []models.UserAPI) (map[string][]models.MovieLightAPI, error)
+	GetMovieDetails(movieID string) (models.MovieLightExtendedAPI, error)
+	GetMovieUserData(movieID string, userID string) (models.UserDataAPI, error)
+	GetMovieName(movieID string) (string, error)
+	GetUserName(userID string) (string, error)
+	DeleteMovie(movieID string) error
+	MarkMovieAsPlayed(movieID string, userID string, movieName string, userName string) error
 }
 
 func NewClient(baseURL, apiKey string, userID string) *Client {
@@ -581,4 +569,28 @@ func (c *Client) DeleteMovie(movieID string) error {
 
 	logrus.Infof("Successfully deleted movie %s from Jellyfin", movieID)
 	return nil
+}
+
+// checkHTTPResponse checks the HTTP response status code and returns an error if not successful
+func checkHTTPResponse(resp *resty.Response, expectedStatusCodes ...int) error {
+	statusCode := resp.StatusCode()
+
+	// Check if status code is in the expected list
+	for _, expectedCode := range expectedStatusCodes {
+		if statusCode == expectedCode {
+			return nil // Success
+		}
+	}
+
+	// Get status description
+	description := httpStatusDescriptions[statusCode]
+	if description == "" {
+		description = "Unknown Status"
+	}
+
+	// Log the error with response details
+	logrus.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
+	logrus.Debugf("Response body: %s", string(resp.Body()))
+
+	return fmt.Errorf("HTTP request failed with status %d (%s)", statusCode, description)
 }

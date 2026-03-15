@@ -1,0 +1,14 @@
+[
+    {
+        "Id": "movie1",
+        "Name": "The Matrix",
+        "ProductionYear": 1999,
+        "Path": "/movies/The_Matrix.mkv"
+    },
+    {
+        "Id": "movie2",
+        "Name": "The Matrix",
+        "ProductionYear": 1999,
+        "Path": "/movies/The.Matrix.1999.mkv"
+    }
+]

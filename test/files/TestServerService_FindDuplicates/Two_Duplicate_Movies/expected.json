@@ -1,0 +1,37 @@
+[
+    {
+        "Movie1": {
+            "Id": "movie1",
+            "Name": "The Matrix",
+            "ProductionYear": 1999,
+            "Path": "/movies/The_Matrix.mkv",
+            "MediaStreams": [],
+            "UserPlayStatuses": [
+                {
+                    "UserId": "user1",
+                    "UserName": "Current User",
+                    "Played": true,
+                    "PlayCount": 1
+                }
+            ]
+        },
+        "Movie2": {
+            "Id": "movie2",
+            "Name": "The Matrix",
+            "ProductionYear": 1999,
+            "Path": "/movies/The.Matrix.1999.mkv",
+            "MediaStreams": [],
+            "UserPlayStatuses": [
+                {
+                    "UserId": "user1",
+                    "UserName": "Current User",
+                    "Played": false,
+                    "PlayCount": 0
+                }
+            ]
+        },
+        "IsDuplicate": true,
+        "Similarity": 95,
+        "HasIdenticalPlayStatus": false
+    }
+]

@@ -1,0 +1,16 @@
+{
+    "movie1": {
+        "Id": "movie1",
+        "Name": "The Matrix",
+        "ProductionYear": 1999,
+        "Path": "/movies/The_Matrix.mkv",
+        "MediaStreams": []
+    },
+    "movie2": {
+        "Id": "movie2",
+        "Name": "The Matrix",
+        "ProductionYear": 1999,
+        "Path": "/movies/The.Matrix.1999.mkv",
+        "MediaStreams": []
+    }
+}
