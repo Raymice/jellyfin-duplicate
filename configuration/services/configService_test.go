@@ -1,8 +1,8 @@
-package services_test
+package services
 
 import (
 	conf_models "jellyfin-duplicate/configuration/models"
-	"jellyfin-duplicate/configuration/services"
+
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -82,7 +82,7 @@ func TestConfigureLogrus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NotPanics(t, func() {
-				services.ConfigureLogrus(tt.config)
+				ConfigureLogrus(tt.config)
 			}, "ConfigureLogrus should not panic with any valid config")
 
 			// Verify logrus level was set
@@ -106,7 +106,7 @@ func TestConfigureGINMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NotPanics(t, func() {
-				services.ConfigureGINMode()
+				ConfigureGINMode()
 			}, "ConfigureGINMode should not panic")
 		})
 	}
@@ -146,7 +146,7 @@ func TestConfigureLogrusWithDifferentFormats(t *testing.T) {
 			}
 
 			assert.NotPanics(t, func() {
-				services.ConfigureLogrus(config)
+				ConfigureLogrus(config)
 			}, "ConfigureLogrus should handle %s format", tt.format)
 		})
 	}
@@ -178,7 +178,7 @@ func TestConfigureLogrusWithReportCaller(t *testing.T) {
 			}
 
 			assert.NotPanics(t, func() {
-				services.ConfigureLogrus(config)
+				ConfigureLogrus(config)
 			}, "ConfigureLogrus should handle report caller: %v", tt.reportCaller)
 		})
 	}

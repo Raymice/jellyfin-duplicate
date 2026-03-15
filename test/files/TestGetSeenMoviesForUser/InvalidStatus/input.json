@@ -1,0 +1,7 @@
+{
+    "userID": "user1",
+    "response": "{\"error\":\"Invalid status code\"}",
+    "statusCode": 502,
+    "expectError": true,
+    "expectEmpty": false
+}

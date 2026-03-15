@@ -387,6 +387,7 @@ func TestGetAllMovies(t *testing.T) {
 				LibrariesStatus   int    `json:"librariesStatus"`
 				MoviesStatus      int    `json:"moviesStatus"`
 				ExpectError       bool   `json:"expectError"`
+				ExpectEmpty       bool   `json:"expectEmpty"`
 			}{})
 
 			// Setup
@@ -414,7 +415,11 @@ func TestGetAllMovies(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Greater(t, len(movies), 0, "Should return at least one movie")
+				if input.ExpectEmpty {
+					assert.True(t, movies == nil || len(movies) == 0, "Should return empty or nil")
+				} else {
+					assert.Greater(t, len(movies), 0, "Should return at least one movie")
+				}
 			}
 		})
 	}
