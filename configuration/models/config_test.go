@@ -1,6 +1,7 @@
-package models
+package models_test
 
 import (
+	"jellyfin-duplicate/configuration/models"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,11 +11,11 @@ import (
 func TestJellyfinConfig(t *testing.T) {
 	tests := []struct {
 		name   string
-		config JellyfinConfig
+		config models.JellyfinConfig
 	}{
 		{
 			name: "Valid Jellyfin config",
-			config: JellyfinConfig{
+			config: models.JellyfinConfig{
 				URL:    "http://localhost:8096",
 				APIKey: "test-api-key-12345",
 				UserID: "admin-user-id",
@@ -22,7 +23,7 @@ func TestJellyfinConfig(t *testing.T) {
 		},
 		{
 			name: "Config with HTTPS",
-			config: JellyfinConfig{
+			config: models.JellyfinConfig{
 				URL:    "https://jellyfin.example.com",
 				APIKey: "secure-api-key",
 				UserID: "user-id-123",
@@ -30,7 +31,7 @@ func TestJellyfinConfig(t *testing.T) {
 		},
 		{
 			name: "Config with empty values",
-			config: JellyfinConfig{
+			config: models.JellyfinConfig{
 				URL:    "",
 				APIKey: "",
 				UserID: "",
@@ -53,11 +54,11 @@ func TestJellyfinConfig(t *testing.T) {
 func TestLogrusConfig(t *testing.T) {
 	tests := []struct {
 		name   string
-		config LogrusConfig
+		config models.LogrusConfig
 	}{
 		{
 			name: "Info level text format",
-			config: LogrusConfig{
+			config: models.LogrusConfig{
 				Level:         "info",
 				Format:        "text",
 				DisableColors: false,
@@ -66,7 +67,7 @@ func TestLogrusConfig(t *testing.T) {
 		},
 		{
 			name: "Debug level JSON format",
-			config: LogrusConfig{
+			config: models.LogrusConfig{
 				Level:         "debug",
 				Format:        "json",
 				DisableColors: true,
@@ -75,7 +76,7 @@ func TestLogrusConfig(t *testing.T) {
 		},
 		{
 			name: "Warn level with colors disabled",
-			config: LogrusConfig{
+			config: models.LogrusConfig{
 				Level:         "warn",
 				Format:        "text",
 				DisableColors: true,
@@ -98,17 +99,17 @@ func TestLogrusConfig(t *testing.T) {
 func TestConfig(t *testing.T) {
 	tests := []struct {
 		name   string
-		config Config
+		config models.Config
 	}{
 		{
 			name: "Full config",
-			config: Config{
+			config: models.Config{
 				ServerPort: "8080",
-				Logrus: LogrusConfig{
+				Logrus: models.LogrusConfig{
 					Level:  "info",
 					Format: "text",
 				},
-				Jellyfin: JellyfinConfig{
+				Jellyfin: models.JellyfinConfig{
 					URL:    "http://localhost:8096",
 					APIKey: "key",
 					UserID: "user",
@@ -117,10 +118,10 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			name: "Empty config",
-			config: Config{
+			config: models.Config{
 				ServerPort: "",
-				Logrus:     LogrusConfig{},
-				Jellyfin:   JellyfinConfig{},
+				Logrus:     models.LogrusConfig{},
+				Jellyfin:   models.JellyfinConfig{},
 			},
 		},
 	}

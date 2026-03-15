@@ -1,6 +1,7 @@
-package constants
+package constants_test
 
 import (
+	"jellyfin-duplicate/constants"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,24 +11,24 @@ import (
 func TestEnvironmentConstants(t *testing.T) {
 	tests := []struct {
 		name     string
-		env      Environment
+		env      constants.Environment
 		expected string
 	}{
 		{
 			name:     "Development environment",
-			env:      Development,
+			env:      constants.Development,
 			expected: "development",
 		},
 		{
 			name:     "Production environment",
-			env:      Production,
+			env:      constants.Production,
 			expected: "production",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, Environment(tt.expected), tt.env)
+			assert.Equal(t, constants.Environment(tt.expected), tt.env)
 		})
 	}
 }
@@ -41,17 +42,17 @@ func TestEnvironmentVariableConstants(t *testing.T) {
 	}{
 		{
 			name:     "Jellyfin URL env variable",
-			constant: EnvJellyfinURL,
+			constant: constants.EnvJellyfinURL,
 			expected: "JELLYFIN_URL",
 		},
 		{
 			name:     "Jellyfin API Key env variable",
-			constant: EnvJellyfinAPIKey,
+			constant: constants.EnvJellyfinAPIKey,
 			expected: "JELLYFIN_API_KEY",
 		},
 		{
 			name:     "Jellyfin Admin User ID env variable",
-			constant: EnvJellyfinAdminUserID,
+			constant: constants.EnvJellyfinAdminUserID,
 			expected: "JELLYFIN_ADMIN_USER_ID",
 		},
 	}
@@ -68,15 +69,15 @@ func TestEnvironmentVariableConstants(t *testing.T) {
 func TestEnvironmentTypeString(t *testing.T) {
 	tests := []struct {
 		name string
-		env  Environment
+		env  constants.Environment
 	}{
 		{
 			name: "Dev environment value",
-			env:  Development,
+			env:  constants.Development,
 		},
 		{
 			name: "Prod environment value",
-			env:  Production,
+			env:  constants.Production,
 		},
 	}
 

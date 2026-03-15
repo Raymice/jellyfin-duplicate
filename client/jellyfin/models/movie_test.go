@@ -1,7 +1,9 @@
-package models
+package models_test
 
 import (
 	"testing"
+
+	"jellyfin-duplicate/client/jellyfin/models"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -10,14 +12,14 @@ import (
 func TestMovieXtLightAPI(t *testing.T) {
 	tests := []struct {
 		name         string
-		movie        MovieXtLightAPI
+		movie        models.MovieXtLightAPI
 		expectedID   string
 		expectedName string
 		expectedYear int
 	}{
 		{
 			name: "Movie with all fields",
-			movie: MovieXtLightAPI{
+			movie: models.MovieXtLightAPI{
 				ID:             "movie1",
 				Name:           "Test Movie",
 				ProductionYear: 2023,
@@ -28,7 +30,7 @@ func TestMovieXtLightAPI(t *testing.T) {
 		},
 		{
 			name: "Movie with zero year",
-			movie: MovieXtLightAPI{
+			movie: models.MovieXtLightAPI{
 				ID:             "movie2",
 				Name:           "Unknown Year Movie",
 				ProductionYear: 0,
@@ -39,7 +41,7 @@ func TestMovieXtLightAPI(t *testing.T) {
 		},
 		{
 			name: "Movie with empty fields",
-			movie: MovieXtLightAPI{
+			movie: models.MovieXtLightAPI{
 				ID:             "",
 				Name:           "",
 				ProductionYear: 2020,
@@ -63,12 +65,12 @@ func TestMovieXtLightAPI(t *testing.T) {
 func TestMovieLightAPI(t *testing.T) {
 	tests := []struct {
 		name  string
-		movie MovieLightAPI
+		movie models.MovieLightAPI
 	}{
 		{
 			name: "Movie light with path",
-			movie: MovieLightAPI{
-				MovieXtLightAPI: MovieXtLightAPI{
+			movie: models.MovieLightAPI{
+				MovieXtLightAPI: models.MovieXtLightAPI{
 					ID:             "light1",
 					Name:           "Light Movie",
 					ProductionYear: 2023,
@@ -78,8 +80,8 @@ func TestMovieLightAPI(t *testing.T) {
 		},
 		{
 			name: "Movie light without path",
-			movie: MovieLightAPI{
-				MovieXtLightAPI: MovieXtLightAPI{
+			movie: models.MovieLightAPI{
+				MovieXtLightAPI: models.MovieXtLightAPI{
 					ID:             "light2",
 					Name:           "No Path Movie",
 					ProductionYear: 2022,
@@ -101,13 +103,13 @@ func TestMovieLightAPI(t *testing.T) {
 func TestUserDataAPI(t *testing.T) {
 	tests := []struct {
 		name              string
-		userData          UserDataAPI
+		userData          models.UserDataAPI
 		expectedPlayed    bool
 		expectedPlayCount int
 	}{
 		{
 			name: "Played movie with count",
-			userData: UserDataAPI{
+			userData: models.UserDataAPI{
 				Played:                true,
 				PlaybackPositionTicks: 1000000,
 				PlayCount:             3,
@@ -118,7 +120,7 @@ func TestUserDataAPI(t *testing.T) {
 		},
 		{
 			name: "Not played movie",
-			userData: UserDataAPI{
+			userData: models.UserDataAPI{
 				Played:                false,
 				PlaybackPositionTicks: 0,
 				PlayCount:             0,
@@ -141,12 +143,12 @@ func TestUserDataAPI(t *testing.T) {
 func TestMediaStreamsAPI(t *testing.T) {
 	tests := []struct {
 		name         string
-		stream       MediaStreamsAPI
+		stream       models.MediaStreamsAPI
 		expectedType string
 	}{
 		{
 			name: "Video stream",
-			stream: MediaStreamsAPI{
+			stream: models.MediaStreamsAPI{
 				DisplayTitle: "H.264 1080p",
 				Type:         "Video",
 			},
@@ -154,7 +156,7 @@ func TestMediaStreamsAPI(t *testing.T) {
 		},
 		{
 			name: "Audio stream",
-			stream: MediaStreamsAPI{
+			stream: models.MediaStreamsAPI{
 				DisplayTitle: "AAC 2.0",
 				Type:         "Audio",
 			},
@@ -174,21 +176,21 @@ func TestMediaStreamsAPI(t *testing.T) {
 func TestMovieAPI(t *testing.T) {
 	tests := []struct {
 		name  string
-		movie MovieAPI
+		movie models.MovieAPI
 	}{
 		{
 			name: "Movie with user data and streams",
-			movie: MovieAPI{
-				MovieXtLightAPI: MovieXtLightAPI{
+			movie: models.MovieAPI{
+				MovieXtLightAPI: models.MovieXtLightAPI{
 					ID:             "full1",
 					Name:           "Full Movie",
 					ProductionYear: 2023,
 				},
-				UserData: UserDataAPI{
+				UserData: models.UserDataAPI{
 					Played:    true,
 					PlayCount: 2,
 				},
-				MediaStreams: []MediaStreamsAPI{
+				MediaStreams: []models.MediaStreamsAPI{
 					{DisplayTitle: "Video", Type: "Video"},
 					{DisplayTitle: "Audio", Type: "Audio"},
 				},
@@ -208,20 +210,20 @@ func TestMovieAPI(t *testing.T) {
 func TestMovieLightExtendedAPI(t *testing.T) {
 	tests := []struct {
 		name  string
-		movie MovieLightExtendedAPI
+		movie models.MovieLightExtendedAPI
 	}{
 		{
 			name: "Extended movie with streams",
-			movie: MovieLightExtendedAPI{
-				MovieLightAPI: MovieLightAPI{
-					MovieXtLightAPI: MovieXtLightAPI{
+			movie: models.MovieLightExtendedAPI{
+				MovieLightAPI: models.MovieLightAPI{
+					MovieXtLightAPI: models.MovieXtLightAPI{
 						ID:             "ext1",
 						Name:           "Extended",
 						ProductionYear: 2023,
 					},
 					Path: "/extended/path",
 				},
-				MediaStreams: []MediaStreamsAPI{
+				MediaStreams: []models.MediaStreamsAPI{
 					{DisplayTitle: "Video", Type: "Video"},
 				},
 			},

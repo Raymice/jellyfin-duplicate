@@ -1,6 +1,7 @@
-package models
+package models_test
 
 import (
+	"jellyfin-duplicate/server/models"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,12 +11,12 @@ import (
 func TestUserPlayStatusDTO(t *testing.T) {
 	tests := []struct {
 		name           string
-		status         UserPlayStatusDTO
+		status         models.UserPlayStatusDTO
 		expectedPlayed bool
 	}{
 		{
 			name: "User played movie",
-			status: UserPlayStatusDTO{
+			status: models.UserPlayStatusDTO{
 				UserID:    "user1",
 				UserName:  "John",
 				Played:    true,
@@ -25,7 +26,7 @@ func TestUserPlayStatusDTO(t *testing.T) {
 		},
 		{
 			name: "User not played movie",
-			status: UserPlayStatusDTO{
+			status: models.UserPlayStatusDTO{
 				UserID:    "user2",
 				UserName:  "Jane",
 				Played:    false,
@@ -47,11 +48,11 @@ func TestUserPlayStatusDTO(t *testing.T) {
 func TestPlayStatusDiscrepancyDTO(t *testing.T) {
 	tests := []struct {
 		name        string
-		discrepancy PlayStatusDiscrepancyDTO
+		discrepancy models.PlayStatusDiscrepancyDTO
 	}{
 		{
 			name: "Discrepancy between two movies",
-			discrepancy: PlayStatusDiscrepancyDTO{
+			discrepancy: models.PlayStatusDiscrepancyDTO{
 				UserID:        "user1",
 				UserName:      "John",
 				MovieToUpdate: "movie-id-2",
@@ -60,7 +61,7 @@ func TestPlayStatusDiscrepancyDTO(t *testing.T) {
 		},
 		{
 			name: "Multiple discrepancies",
-			discrepancy: PlayStatusDiscrepancyDTO{
+			discrepancy: models.PlayStatusDiscrepancyDTO{
 				UserID:        "user2",
 				UserName:      "Jane",
 				MovieToUpdate: "movie-id-3",
@@ -82,26 +83,26 @@ func TestPlayStatusDiscrepancyDTO(t *testing.T) {
 func TestDuplicateResultDTO(t *testing.T) {
 	tests := []struct {
 		name              string
-		duplicate         DuplicateResultDTO
+		duplicate         models.DuplicateResultDTO
 		expectedDuplicate bool
 	}{
 		{
 			name: "Confirmed duplicate",
-			duplicate: DuplicateResultDTO{
+			duplicate: models.DuplicateResultDTO{
 				IsDuplicate:             true,
 				Similarity:              98,
 				HasIdenticalPlayStatus:  true,
-				PlayStatusDiscrepancies: []PlayStatusDiscrepancyDTO{},
+				PlayStatusDiscrepancies: []models.PlayStatusDiscrepancyDTO{},
 			},
 			expectedDuplicate: true,
 		},
 		{
 			name: "Similar but not identical",
-			duplicate: DuplicateResultDTO{
+			duplicate: models.DuplicateResultDTO{
 				IsDuplicate:            false,
 				Similarity:             75,
 				HasIdenticalPlayStatus: false,
-				PlayStatusDiscrepancies: []PlayStatusDiscrepancyDTO{
+				PlayStatusDiscrepancies: []models.PlayStatusDiscrepancyDTO{
 					{UserID: "u1", UserName: "User1", MovieToUpdate: "m2", MovieName: "Movie"},
 				},
 			},
@@ -109,12 +110,12 @@ func TestDuplicateResultDTO(t *testing.T) {
 		},
 		{
 			name: "Duplicate with discrepancies",
-			duplicate: DuplicateResultDTO{
+			duplicate: models.DuplicateResultDTO{
 				IsDuplicate:              true,
 				Similarity:               95,
 				HasIdenticalPlayStatus:   false,
 				HasPlayStatusDiscrepancy: true,
-				PlayStatusDiscrepancies: []PlayStatusDiscrepancyDTO{
+				PlayStatusDiscrepancies: []models.PlayStatusDiscrepancyDTO{
 					{UserID: "u1", UserName: "User1", MovieToUpdate: "m2", MovieName: "Movie"},
 					{UserID: "u2", UserName: "User2", MovieToUpdate: "m1", MovieName: "Movie"},
 				},
@@ -127,7 +128,7 @@ func TestDuplicateResultDTO(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expectedDuplicate, tt.duplicate.IsDuplicate)
 			assert.Greater(t, tt.duplicate.Similarity, 0)
-			assert.IsType(t, []PlayStatusDiscrepancyDTO{}, tt.duplicate.PlayStatusDiscrepancies)
+			assert.IsType(t, []models.PlayStatusDiscrepancyDTO{}, tt.duplicate.PlayStatusDiscrepancies)
 		})
 	}
 }
@@ -136,12 +137,12 @@ func TestDuplicateResultDTO(t *testing.T) {
 func TestMovieLightStatusDTO(t *testing.T) {
 	tests := []struct {
 		name  string
-		movie MovieLightStatusDTO
+		movie models.MovieLightStatusDTO
 	}{
 		{
 			name: "Movie with user statuses",
-			movie: MovieLightStatusDTO{
-				UserPlayStatuses: []UserPlayStatusDTO{
+			movie: models.MovieLightStatusDTO{
+				UserPlayStatuses: []models.UserPlayStatusDTO{
 					{UserID: "u1", UserName: "User1", Played: true, PlayCount: 2},
 					{UserID: "u2", UserName: "User2", Played: false, PlayCount: 0},
 				},
@@ -149,8 +150,8 @@ func TestMovieLightStatusDTO(t *testing.T) {
 		},
 		{
 			name: "Movie with single user",
-			movie: MovieLightStatusDTO{
-				UserPlayStatuses: []UserPlayStatusDTO{
+			movie: models.MovieLightStatusDTO{
+				UserPlayStatuses: []models.UserPlayStatusDTO{
 					{UserID: "u1", UserName: "User1", Played: true, PlayCount: 1},
 				},
 			},
@@ -169,12 +170,12 @@ func TestMovieLightStatusDTO(t *testing.T) {
 func TestMovieDTO(t *testing.T) {
 	tests := []struct {
 		name  string
-		movie MovieDTO
+		movie models.MovieDTO
 	}{
 		{
 			name: "Full movie DTO",
-			movie: MovieDTO{
-				UserPlayStatuses: []UserPlayStatusDTO{
+			movie: models.MovieDTO{
+				UserPlayStatuses: []models.UserPlayStatusDTO{
 					{UserID: "u1", UserName: "User1", Played: true},
 				},
 			},

@@ -1,6 +1,7 @@
-package models
+package models_test
 
 import (
+	"jellyfin-duplicate/client/jellyfin/models"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,12 +11,12 @@ import (
 func TestUserAPI(t *testing.T) {
 	tests := []struct {
 		name                string
-		user                UserAPI
+		user                models.UserAPI
 		expectedHasPassword bool
 	}{
 		{
 			name: "User with password",
-			user: UserAPI{
+			user: models.UserAPI{
 				ID:               "user1",
 				Name:             "John Doe",
 				HasPassword:      true,
@@ -26,7 +27,7 @@ func TestUserAPI(t *testing.T) {
 		},
 		{
 			name: "User without password",
-			user: UserAPI{
+			user: models.UserAPI{
 				ID:               "user2",
 				Name:             "Jane Doe",
 				HasPassword:      false,
@@ -37,7 +38,7 @@ func TestUserAPI(t *testing.T) {
 		},
 		{
 			name: "User with empty name",
-			user: UserAPI{
+			user: models.UserAPI{
 				ID:          "user3",
 				Name:        "",
 				HasPassword: true,
@@ -58,12 +59,12 @@ func TestUserAPI(t *testing.T) {
 func TestLibraryAPI(t *testing.T) {
 	tests := []struct {
 		name         string
-		library      LibraryAPI
+		library      models.LibraryAPI
 		expectedName string
 	}{
 		{
 			name: "Movies library",
-			library: LibraryAPI{
+			library: models.LibraryAPI{
 				ID:   "lib1",
 				Name: "Movies",
 			},
@@ -71,7 +72,7 @@ func TestLibraryAPI(t *testing.T) {
 		},
 		{
 			name: "TV Shows library",
-			library: LibraryAPI{
+			library: models.LibraryAPI{
 				ID:   "lib2",
 				Name: "TV Shows",
 			},
@@ -79,7 +80,7 @@ func TestLibraryAPI(t *testing.T) {
 		},
 		{
 			name: "Library with special characters",
-			library: LibraryAPI{
+			library: models.LibraryAPI{
 				ID:   "lib3",
 				Name: "My Films & Videos",
 			},
