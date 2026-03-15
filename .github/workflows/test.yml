@@ -5,6 +5,8 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push changes back to the repository
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
