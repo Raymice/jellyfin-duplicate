@@ -1,6 +1,7 @@
 # Jellyfin Duplicate Finder
 
-
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Raymice/jellyfin-duplicate/coverage.yml)
+![Go Test Coverage](.github/badges/coverage.svg)
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/Raymice/jellyfin-duplicate/main)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Raymice/jellyfin-duplicate/docker-build-push.yml)
 ![GitHub Tag](https://img.shields.io/github/v/tag/Raymice/jellyfin-duplicate)
