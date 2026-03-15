@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"jellyfin-duplicate/client/jellyfin/models"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -497,6 +498,111 @@ func TestCheckHTTPResponse(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestGetSeenMoviesForAllUsers(t *testing.T) {
+	tests := []struct {
+		name         string
+		users        []models.UserAPI
+		mockResponse string
+		statusCode   int
+		expectError  bool
+		expectMapLen int
+		description  string
+	}{
+		{
+			name: "Successfully fetches seen movies for multiple users",
+			users: []models.UserAPI{
+				{ID: "user1", Name: "User One"},
+				{ID: "user2", Name: "User Two"},
+				{ID: "user3", Name: "User Three"},
+			},
+			mockResponse: `{"Items":[{"Id":"movie1","Name":"Movie 1","ProductionYear":2020,"Path":"/movies/1"}],"TotalRecordCount":1}`,
+			statusCode:   200,
+			expectError:  false,
+			expectMapLen: 3,
+			description:  "All three users successfully return movies",
+		},
+		{
+			name:         "Handles empty user list",
+			users:        []models.UserAPI{},
+			mockResponse: `{"Items":[],"TotalRecordCount":0}`,
+			statusCode:   200,
+			expectError:  false,
+			expectMapLen: 0,
+			description:  "Empty user list returns empty map",
+		},
+		{
+			name: "Handles API error response",
+			users: []models.UserAPI{
+				{ID: "user1", Name: "User One"},
+			},
+			mockResponse: `{"error":"Internal Server Error"}`,
+			statusCode:   500,
+			expectError:  true,
+			expectMapLen: 0,
+			description:  "API error causes function to return error",
+		},
+		{
+			name: "Successfully fetches for many concurrent users",
+			users: []models.UserAPI{
+				{ID: "user1", Name: "User One"},
+				{ID: "user2", Name: "User Two"},
+				{ID: "user3", Name: "User Three"},
+				{ID: "user4", Name: "User Four"},
+				{ID: "user5", Name: "User Five"},
+				{ID: "user6", Name: "User Six"},
+				{ID: "user7", Name: "User Seven"},
+			},
+			mockResponse: `{"Items":[{"Id":"movie1","Name":"Movie 1","ProductionYear":2020,"Path":"/movies/1"}],"TotalRecordCount":1}`,
+			statusCode:   200,
+			expectError:  false,
+			expectMapLen: 7,
+			description:  "Handles concurrent requests for 7 users (exceeds 5 semaphore limit)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup mock server
+			server := mockServer(tt.mockResponse, tt.statusCode)
+			defer server.Close()
+
+			// Create client
+			client := NewClient(server.URL, "test-key", "admin-user")
+
+			// Execute
+			result, err := client.GetSeenMoviesForAllUsers(tt.users)
+
+			// Validate error handling
+			if tt.expectError {
+				assert.Error(t, err, "Expected error: "+tt.description)
+				assert.Nil(t, result, "Result should be nil on error")
+			} else {
+				assert.NoError(t, err, "Unexpected error: "+tt.description)
+				if tt.expectMapLen == 0 {
+					// For empty list, result should be empty map not nil
+					assert.NotNil(t, result, "Result should be map (empty or not)")
+					assert.Equal(t, tt.expectMapLen, len(result), "Expected map length: "+tt.description)
+				} else {
+					// For non-empty list, check all users are in the map
+					assert.NotNil(t, result, "Result should not be nil: "+tt.description)
+					assert.Equal(t, tt.expectMapLen, len(result), "Expected all users in map: "+tt.description)
+
+					// Verify each user has an entry
+					for _, user := range tt.users {
+						_, exists := result[user.ID]
+						assert.True(t, exists, "User "+user.ID+" should be in result map")
+
+						// Each user should have at least one movie in the success case
+						if tt.statusCode == 200 {
+							assert.NotNil(t, result[user.ID], "Movies list should not be nil for user "+user.ID)
+						}
+					}
+				}
 			}
 		})
 	}

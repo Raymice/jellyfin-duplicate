@@ -1,9 +1,6 @@
 name: Test
 
-on:
-  push:
-    branches:
-      - feat/*
+on: push
 
 jobs:
   test:
@@ -20,9 +17,11 @@ jobs:
       - name: generate test coverage
         run: go test ./... -count=1 -coverprofile=./cover.out -covermode=atomic
 
+      # Local command: go-test-coverage --config=.github/.testcoverage.yml --badge-file-name=.github/badges/coverage.svg --profile=cover.out
       - name: check test coverage
         uses: vladopajic/go-test-coverage@v2
         with:
+          config: ./.github/.testcoverage.yml
           profile: cover.out
           # badge will be generated and store on file system with `coverage.svg` name
           badge-file-name: .github/badges/coverage.svg

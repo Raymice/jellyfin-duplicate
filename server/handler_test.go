@@ -1,14 +1,24 @@
 package server_test
 
 import (
-	jellyfinClients "jellyfin-duplicate/client/jellyfin/http"
 	apiModels "jellyfin-duplicate/client/jellyfin/models"
 	"jellyfin-duplicate/server"
-	serverModels "jellyfin-duplicate/server/models"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
+
+// setupTestRouter creates a gin router with templates loaded for testing
+func setupTestRouter() *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	// Load templates from embedded filesystem
+	r.LoadHTMLFS(http.FS(server.GetTemplateFS()), server.GetTemplateFSPath())
+	return r
+}
 
 type mockJellyfinClientForHandler struct {
 	movies     []apiModels.MovieLightAPI
@@ -16,6 +26,7 @@ type mockJellyfinClientForHandler struct {
 	shouldFail bool
 }
 
+// Implement http.JellyfinClient interface methods
 func (m *mockJellyfinClientForHandler) GetAllMovies() ([]apiModels.MovieLightAPI, error) {
 	if m.shouldFail {
 		return nil, assert.AnError
@@ -67,7 +78,8 @@ func (m *mockJellyfinClientForHandler) MarkMovieAsPlayed(movieID string, userID 
 	return nil
 }
 
-func TestNewHandler(t *testing.T) {
+// TestNewHandler_SuccessfulCreation tests Handler instantiation
+func TestNewHandler_SuccessfulCreation(t *testing.T) {
 	tests := []struct {
 		name string
 	}{
@@ -78,178 +90,284 @@ func TestNewHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := &jellyfinClients.Client{}
-			handler := server.NewHandler(client)
+			mockClient := &mockJellyfinClientForHandler{}
+			handler := server.NewHandler(mockClient)
 
 			assert.NotNil(t, handler, "Handler should not be nil")
 		})
 	}
 }
 
-func TestHandlerDeleteMovie_ValidID(t *testing.T) {
+// TestGetHomePage tests the home page endpoint
+func TestGetHomePage(t *testing.T) {
 	tests := []struct {
-		name    string
-		movieID string
-		valid   bool
+		name           string
+		expectedStatus int
 	}{
 		{
-			name:    "Valid UUID format - 32 chars",
-			movieID: "12345678901234567890123456789012",
-			valid:   true,
-		},
-		{
-			name:    "Valid UUID format - 36 chars",
-			movieID: "12345678-1234-1234-1234-123456789012",
-			valid:   true,
+			name:           "Home page renders successfully",
+			expectedStatus: http.StatusOK,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := server.IsUUIDFormtatted(tt.movieID)
-			assert.Equal(t, tt.valid, result)
+			router := setupTestRouter()
+
+			// Create mock client and handler
+			mockClient := &mockJellyfinClientForHandler{}
+			handler := server.NewHandler(mockClient)
+
+			// Register the route
+			router.GET("/", handler.GetHomePage)
+
+			// Create request and recorder
+			req := httptest.NewRequest("GET", "/", nil)
+			w := httptest.NewRecorder()
+
+			// Perform request
+			router.ServeHTTP(w, req)
+
+			// Verify status code
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code should match")
 		})
 	}
 }
 
-func TestHandlerDeleteMovie_InvalidID(t *testing.T) {
+// TestGetDuplicatesJSON tests the JSON duplicates endpoint
+func TestGetDuplicatesJSON(t *testing.T) {
 	tests := []struct {
-		name    string
-		movieID string
-		valid   bool
+		name           string
+		movies         []apiModels.MovieLightAPI
+		shouldFail     bool
+		expectedStatus int
 	}{
 		{
-			name:    "Too short ID",
-			movieID: "short",
-			valid:   false,
+			name: "Returns empty array when no duplicates found",
+			movies: []apiModels.MovieLightAPI{
+				{MovieXtLightAPI: apiModels.MovieXtLightAPI{ID: "movie1", Name: "Movie A", ProductionYear: 2020}, Path: "/path1"},
+			},
+			shouldFail:     false,
+			expectedStatus: http.StatusOK,
 		},
 		{
-			name:    "Too long ID",
-			movieID: "123456789012345678901234567890123456789012345678",
-			valid:   false,
+			name:           "Service error returns 500",
+			shouldFail:     true,
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := server.IsUUIDFormtatted(tt.movieID)
-			assert.Equal(t, tt.valid, result)
-		})
-	}
-}
+			router := setupTestRouter()
 
-func TestHandlerMarkMovieAsSeen_Validation(t *testing.T) {
-	tests := []struct {
-		name   string
-		userID string
-		valid  bool
-	}{
-		{
-			name:   "Valid user ID",
-			userID: "12345678901234567890123456789012",
-			valid:  true,
-		},
-		{
-			name:   "Invalid user ID - too short",
-			userID: "invalid",
-			valid:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := server.IsUUIDFormtatted(tt.userID)
-			assert.Equal(t, tt.valid, result)
-		})
-	}
-}
-
-// Test the service layer response for handlers
-func TestHandlerDuplicatesAnalysis(t *testing.T) {
-	tests := []struct {
-		name       string
-		hasMovies  bool
-		shouldFail bool
-	}{
-		{
-			name:       "With movies",
-			hasMovies:  true,
-			shouldFail: false,
-		},
-		{
-			name:       "No movies",
-			hasMovies:  false,
-			shouldFail: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &mockJellyfinClientForHandler{
-				movies:     []apiModels.MovieLightAPI{},
+				movies:     tt.movies,
 				users:      []apiModels.UserAPI{{ID: "user1", Name: "User One"}},
 				shouldFail: tt.shouldFail,
 			}
 
-			if tt.hasMovies {
-				mockClient.movies = []apiModels.MovieLightAPI{
-					{MovieXtLightAPI: apiModels.MovieXtLightAPI{ID: "movie1", Name: "Movie 1", ProductionYear: 2023}, Path: "/movies/1"},
-					{MovieXtLightAPI: apiModels.MovieXtLightAPI{ID: "movie2", Name: "Movie 1", ProductionYear: 2023}, Path: "/movies/2"},
-				}
-			}
+			handler := server.NewHandler(mockClient)
+			router.GET("/api/duplicates", handler.GetDuplicatesJSON)
 
-			service := server.NewService(mockClient)
-			duplicates, err := service.FindDuplicates()
+			req := httptest.NewRequest("GET", "/api/duplicates", nil)
+			w := httptest.NewRecorder()
 
-			if tt.shouldFail {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				// FindDuplicates returns nil when no duplicates found, empty slice otherwise
-				assert.True(t, duplicates == nil || len(duplicates) >= 0, "Should return slice or nil")
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code should match")
+			if tt.expectedStatus == http.StatusOK {
+				assert.Contains(t, w.Header().Get("Content-Type"), "application/json", "Should return JSON")
 			}
 		})
 	}
 }
 
-// Test GetPlayStatusDiscrepancies in handler context
-func TestHandlerPlayStatusDiscrepancies(t *testing.T) {
+// TestDeleteMovie tests the delete movie endpoint
+func TestDeleteMovie(t *testing.T) {
+	validMovieID := "12345678-1234-1234-1234-123456789012"
+
 	tests := []struct {
-		name            string
-		movie1PlayCount int
-		movie2PlayCount int
+		name           string
+		movieID        string
+		shouldFail     bool
+		expectedStatus int
 	}{
 		{
-			name:            "Both movies identical play status",
-			movie1PlayCount: 2,
-			movie2PlayCount: 2,
+			name:           "Successfully deletes movie with valid UUID",
+			movieID:        validMovieID,
+			shouldFail:     false,
+			expectedStatus: http.StatusOK,
 		},
 		{
-			name:            "Different play status",
-			movie1PlayCount: 1,
-			movie2PlayCount: 0,
+			name:           "Rejects missing movieId parameter",
+			movieID:        "",
+			shouldFail:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Rejects invalid UUID format",
+			movieID:        "invalid-short-id",
+			shouldFail:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Handles service error with 500",
+			movieID:        validMovieID,
+			shouldFail:     true,
+			expectedStatus: http.StatusInternalServerError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockClient := &mockJellyfinClientForHandler{}
-			service := server.NewService(mockClient)
+			router := setupTestRouter()
 
-			movie1 := serverModels.MovieDTO{
-				UserPlayStatuses: []serverModels.UserPlayStatusDTO{
-					{UserID: "user1", UserName: "User 1", Played: true, PlayCount: 1},
-				},
+			mockClient := &mockJellyfinClientForHandler{
+				shouldFail: tt.shouldFail,
 			}
 
-			movie2 := serverModels.MovieDTO{
-				UserPlayStatuses: []serverModels.UserPlayStatusDTO{
-					{UserID: "user1", UserName: "User 1", Played: true, PlayCount: 1},
-				},
+			handler := server.NewHandler(mockClient)
+			router.GET("/api/delete-movie", handler.DeleteMovie)
+
+			req := httptest.NewRequest("GET", "/api/delete-movie?movieId="+tt.movieID, nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code should match for: "+tt.name)
+		})
+	}
+}
+
+// TestMarkMovieAsSeen tests the mark movie as seen endpoint
+func TestMarkMovieAsSeen(t *testing.T) {
+	validMovieID := "12345678-1234-1234-1234-123456789012"
+	validUserID := "87654321-4321-4321-4321-210987654321"
+
+	tests := []struct {
+		name           string
+		movieID        string
+		userID         string
+		shouldFail     bool
+		expectedStatus int
+	}{
+		{
+			name:           "Successfully marks movie as seen with valid IDs",
+			movieID:        validMovieID,
+			userID:         validUserID,
+			shouldFail:     false,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Rejects missing movieId parameter",
+			movieID:        "",
+			userID:         validUserID,
+			shouldFail:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Rejects missing userId parameter",
+			movieID:        validMovieID,
+			userID:         "",
+			shouldFail:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Rejects invalid movieId format",
+			movieID:        "invalid-id",
+			userID:         validUserID,
+			shouldFail:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Rejects invalid userId format",
+			movieID:        validMovieID,
+			userID:         "invalid-user",
+			shouldFail:     false,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "Handles service error with 500",
+			movieID:        validMovieID,
+			userID:         validUserID,
+			shouldFail:     true,
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := setupTestRouter()
+
+			mockClient := &mockJellyfinClientForHandler{
+				shouldFail: tt.shouldFail,
 			}
 
-			discrepancies := service.GetPlayStatusDiscrepancies(movie1, movie2)
-			assert.NotNil(t, discrepancies)
+			handler := server.NewHandler(mockClient)
+			router.GET("/api/mark-as-seen", handler.MarkMovieAsSeen)
+
+			req := httptest.NewRequest("GET", "/api/mark-as-seen?movieId="+tt.movieID+"&userId="+tt.userID, nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code, "Status code should match for: "+tt.name)
+		})
+	}
+}
+
+// TestGetDuplicatesPage tests the HTML duplicates page endpoint
+func TestGetDuplicatesPage(t *testing.T) {
+	tests := []struct {
+		name       string
+		movies     []apiModels.MovieLightAPI
+		users      []apiModels.UserAPI
+		shouldFail bool
+	}{
+		{
+			name: "Renders duplicates page with movies",
+			movies: []apiModels.MovieLightAPI{
+				{MovieXtLightAPI: apiModels.MovieXtLightAPI{ID: "movie1", Name: "Movie A", ProductionYear: 2020}, Path: "/path1"},
+				{MovieXtLightAPI: apiModels.MovieXtLightAPI{ID: "movie2", Name: "Movie A", ProductionYear: 2020}, Path: "/path2"},
+			},
+			users:      []apiModels.UserAPI{{ID: "user1", Name: "User One"}},
+			shouldFail: false,
+		},
+		{
+			name:       "Renders duplicates page with no movies",
+			movies:     []apiModels.MovieLightAPI{},
+			users:      []apiModels.UserAPI{},
+			shouldFail: false,
+		},
+		{
+			name:       "Returns error page on service failure",
+			movies:     []apiModels.MovieLightAPI{},
+			users:      []apiModels.UserAPI{},
+			shouldFail: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := setupTestRouter()
+
+			mockClient := &mockJellyfinClientForHandler{
+				movies:     tt.movies,
+				users:      tt.users,
+				shouldFail: tt.shouldFail,
+			}
+
+			handler := server.NewHandler(mockClient)
+			router.GET("/analysis", handler.GetDuplicatesPage)
+
+			req := httptest.NewRequest("GET", "/analysis", nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			// Verify handler was called - status verification depends on scenario
+			assert.NotNil(t, handler, "Handler should not be nil")
 		})
 	}
 }

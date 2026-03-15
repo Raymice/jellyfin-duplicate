@@ -1,0 +1,11 @@
+profile: '' # set via github action
+threshold:
+  total: 80
+exclude:
+  paths:
+    - main\.go$
+    - ^client/jellyfin/models/
+    - ^configuration/models/
+    - ^server/models/ 
+    - ^configuration/services/assets/
+    - ^constants/
