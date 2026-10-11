@@ -148,6 +148,9 @@ The application need to be configured using environment variables:
 - `JELLYFIN_URL`: URL of your Jellyfin server (required)
 - `JELLYFIN_API_KEY`: Jellyfin API key (required)
 - `JELLYFIN_ADMIN_USER_ID`: Jellyfin Admin user ID (required)
+- `JELLYFIN_AUTH`: `AUTO` (default) selects legacy authentication below version 12 and modern authentication for version 12 or newer. `LEGACY` and `LATEST` force a mode and log a warning if it differs from the server version recommendation.
+
+At startup, the public `/System/Info/Public` endpoint supplies the server version. Modern authentication uses `Authorization: MediaBrowser`; legacy authentication uses `X-MediaBrowser-Token`. If version detection fails, startup continues: `AUTO` falls back to `LATEST`, and explicit modes keep their selected authentication. Continue using your existing `JELLYFIN_API_KEY`. Replace the previous `JELLYFIN_LEGACY_AUTH` setting with `JELLYFIN_AUTH`.
 
 ## Usage
 
@@ -220,3 +223,13 @@ The application provides tools to mark movies as seen for specific users, ensuri
 ## License
 
 MIT
+
+## Live Jellyfin test
+
+Populate the repository root `.env` with `JELLYFIN_URL`, `JELLYFIN_API_KEY`, and `JELLYFIN_ADMIN_USER_ID` (see `.env.example`), then run:
+
+```bash
+go test -tags=e2e ./client/jellyfin/http -run '^TestJellyfinE2E$' -count=1 -v -timeout=5m
+```
+
+This opt-in test reads credentials directly from `.env` and calls your live server. It checks users, libraries, seen movies, and details and watch history for one available movie. Movie checks are skipped if the server has no movies. It does not delete movies or change watch history. Normal `go test ./...` runs exclude this test.

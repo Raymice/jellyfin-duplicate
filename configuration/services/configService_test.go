@@ -335,6 +335,7 @@ func TestConfigureLogrusEdgeCases(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
+	t.Setenv(constants.EnvJellyfinAuth, "")
 	tests := []struct {
 		name    string // description of this test case
 		want    *conf_models.Config
@@ -348,6 +349,7 @@ func TestLoadConfig(t *testing.T) {
 					URL:    "http://localhost:8096",
 					APIKey: "key",
 					UserID: "admin",
+					Auth:   "AUTO",
 				},
 				Logrus: conf_models.LogrusConfig{
 					Level:         "info",
@@ -381,6 +383,36 @@ func TestLoadConfig(t *testing.T) {
 			assert.Equal(t, tt.want.ServerPort, got.ServerPort)
 			assert.Equal(t, tt.want.Jellyfin, got.Jellyfin)
 			assert.Equal(t, tt.want.Logrus, got.Logrus)
+		})
+	}
+}
+
+func TestLoadConfigAuthentication(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		value   string
+		want    string
+		wantErr bool
+	}{
+		{name: "default", want: "AUTO"},
+		{name: "latest", value: "LATEST", want: "LATEST"},
+		{name: "legacy", value: "LEGACY", want: "LEGACY"},
+		{name: "auto", value: "AUTO", want: "AUTO"},
+		{name: "invalid", value: "invalid", wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(constants.EnvJellyfinURL, "http://localhost:8096")
+			t.Setenv(constants.EnvJellyfinAPIKey, "test-key")
+			t.Setenv(constants.EnvJellyfinAdminUserID, "admin")
+			t.Setenv(constants.EnvJellyfinAuth, tc.value)
+			config, err := conf_services.LoadConfig()
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			if assert.NoError(t, err) {
+				assert.Equal(t, tc.want, config.Jellyfin.Auth)
+			}
 		})
 	}
 }

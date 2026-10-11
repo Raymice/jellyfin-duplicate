@@ -40,7 +40,9 @@ func main() {
 	// Initialize Jellyfin client
 	logrus.Info("Initializing Jellyfin client...")
 	jellyfinClient := jellyfinClient.NewClient(config.Jellyfin.URL, config.Jellyfin.APIKey, config.Jellyfin.UserID)
-
+	if err := jellyfinClient.ConfigureAuthentication(config.Jellyfin.Auth); err != nil {
+		logrus.Warnf("Unable to determine Jellyfin authentication from server version: %v", err)
+	}
 	logrus.Info("Jellyfin client initialized successfully")
 
 	// Create Gin router

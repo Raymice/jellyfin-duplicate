@@ -1,9 +1,12 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"jellyfin-duplicate/client/jellyfin/models"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +32,7 @@ var httpStatusDescriptions = map[int]string{
 }
 
 type Client struct {
+	legacyAuth bool
 	baseURL    string
 	apiKey     string
 	userID     string
@@ -49,14 +53,92 @@ type JellyfinClient interface {
 	MarkMovieAsPlayed(movieID string, userID string, movieName string, userName string) error
 }
 
-func NewClient(baseURL, apiKey string, userID string) *Client {
+func NewClient(baseURL, apiKey string, userID string, legacyAuth ...bool) *Client {
 	return &Client{
-		baseURL:   baseURL,
-		apiKey:    apiKey,
-		userID:    userID,
-		client:    resty.New(),
-		userCache: make(map[string]string),
+		legacyAuth: len(legacyAuth) > 0 && legacyAuth[0],
+		baseURL:    baseURL,
+		apiKey:     apiKey,
+		userID:     userID,
+		client:     resty.New(),
+		userCache:  make(map[string]string),
 	}
+}
+
+// newRequest selects the configured authentication scheme for every API call.
+func (c *Client) newRequest() *resty.Request {
+	if c.legacyAuth {
+		return c.client.R().SetHeader("X-MediaBrowser-Token", c.apiKey)
+	}
+	return c.client.R().SetHeader("Authorization", fmt.Sprintf(`MediaBrowser Token=%q`, c.apiKey))
+}
+
+// ConfigureAuthentication runs once at startup, before authenticated API calls.
+// If detection fails, AUTO falls back to LATEST and explicit modes remain selected.
+func (c *Client) ConfigureAuthentication(mode string) error {
+	mode = strings.ToUpper(strings.TrimSpace(mode))
+	if mode == "" {
+		mode = "AUTO"
+	}
+	if mode != "AUTO" && mode != "LEGACY" && mode != "LATEST" {
+		return fmt.Errorf("JELLYFIN_AUTH must be AUTO, LEGACY, or LATEST")
+	}
+	c.legacyAuth = mode == "LEGACY"
+	defer func() {
+		if c.legacyAuth {
+			logrus.Infof("Jellyfin authentication: LEGACY (X-MediaBrowser-Token header; configured mode: %s)", mode)
+		} else {
+			logrus.Infof("Jellyfin authentication: LATEST (Authorization: MediaBrowser header; configured mode: %s)", mode)
+		}
+	}()
+	version, err := c.GetServerVersion()
+	if err != nil {
+		logrus.Info("Jellyfin server version: unknown (public version request failed)")
+		return err
+	}
+	logrus.Infof("Jellyfin server version: %s", version)
+	parts := regexp.MustCompile(`^(\d+)\.\d+\.\d+(?:[-+].+)?$`).FindStringSubmatch(version)
+	if parts == nil {
+		return fmt.Errorf("unrecognized Jellyfin server version %q", version)
+	}
+	major, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return fmt.Errorf("invalid Jellyfin major version: %w", err)
+	}
+	useLegacy := major < 12
+	if mode == "AUTO" {
+		c.legacyAuth = useLegacy
+	} else if c.legacyAuth != useLegacy {
+		recommended := "LATEST"
+		if useLegacy {
+			recommended = "LEGACY"
+		}
+		logrus.Warnf("JELLYFIN_AUTH=%s differs from the recommended %s authentication for Jellyfin %s", mode, recommended, version)
+	}
+	return nil
+}
+
+// GetServerVersion queries public system information without authentication.
+func (c *Client) GetServerVersion() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := c.client.R().SetContext(ctx).
+		Get(strings.TrimRight(c.baseURL, "/") + "/System/Info/Public")
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch Jellyfin server version: %w", err)
+	}
+	if err := checkHTTPResponse(resp, 200); err != nil {
+		return "", err
+	}
+	var info struct {
+		Version string `json:"Version"`
+	}
+	if err := json.Unmarshal(resp.Body(), &info); err != nil {
+		return "", fmt.Errorf("failed to parse Jellyfin public system information: %w", err)
+	}
+	if strings.TrimSpace(info.Version) == "" {
+		return "", fmt.Errorf("Jellyfin public system information contains no version")
+	}
+	return info.Version, nil
 }
 
 func (c *Client) GetAllMovies() ([]models.MovieLightAPI, error) {
@@ -134,8 +216,7 @@ func (c *Client) GetLibraries() ([]models.LibraryAPI, error) {
 
 	start := time.Now()
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		Get(fmt.Sprintf("%s/Users/%s/Views", c.baseURL, c.userID))
 
 	if err != nil {
@@ -183,8 +264,7 @@ func (c *Client) getMoviesFromLibrary(libraryID string) ([]models.MovieLightAPI,
 			TotalRecordCount int                    `json:"TotalRecordCount"`
 		}
 
-		resp, err := c.client.R().
-			SetHeader("X-MediaBrowser-Token", c.apiKey).
+		resp, err := c.newRequest().
 			SetQueryParam("recursive", "true").
 			SetQueryParam("includeItemTypes", "Movie").
 			SetQueryParam("parentId", libraryID).
@@ -231,8 +311,7 @@ func (c *Client) GetAllUsers() ([]models.UserAPI, error) {
 	start := time.Now()
 	logrus.Info("Fetching all users from Jellyfin...")
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		SetResult(&users).
 		Get(fmt.Sprintf("%s/Users", c.baseURL))
 
@@ -260,8 +339,7 @@ func (c *Client) GetAllUsers() ([]models.UserAPI, error) {
 func (c *Client) GetMovieUserData(movieID string, userID string) (models.UserDataAPI, error) {
 	var result models.UserDataAPI
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		SetQueryParam("userId", userID).
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/UserItems/%s/UserData", c.baseURL, movieID))
@@ -282,8 +360,7 @@ func (c *Client) GetMovieUserData(movieID string, userID string) (models.UserDat
 func (c *Client) GetMovieDetails(movieID string) (models.MovieLightExtendedAPI, error) {
 	var result models.MovieLightExtendedAPI
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		SetQueryParam("userId", c.userID).
 		SetQueryParam("enableImages", "false").
 		SetQueryParam("enableUserData", "false").
@@ -318,8 +395,7 @@ func (c *Client) GetSeenMoviesForUser(userID string) ([]models.MovieLightAPI, er
 			TotalRecordCount int                    `json:"TotalRecordCount"`
 		}
 
-		resp, err := c.client.R().
-			SetHeader("X-MediaBrowser-Token", c.apiKey).
+		resp, err := c.newRequest().
 			SetQueryParam("recursive", "true").
 			SetQueryParam("includeItemTypes", "Movie").
 			SetQueryParam("isPlayed", "true").
@@ -415,8 +491,7 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 		Name string `json:"Name"`
 	}
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		SetQueryParam("Fields", "Path").
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s/Items/%s", c.baseURL, c.userID, movieID))
@@ -436,8 +511,7 @@ func (c *Client) GetMovieName(movieID string) (string, error) {
 		var basicResult struct {
 			Name string `json:"Name"`
 		}
-		resp, err := c.client.R().
-			SetHeader("X-MediaBrowser-Token", c.apiKey).
+		resp, err := c.newRequest().
 			SetResult(&basicResult).
 			Get(fmt.Sprintf("%s/Items/%s", c.baseURL, movieID))
 
@@ -472,8 +546,7 @@ func (c *Client) GetUserName(userID string) (string, error) {
 		Name string `json:"Name"`
 	}
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		SetResult(&result).
 		Get(fmt.Sprintf("%s/Users/%s", c.baseURL, userID))
 
@@ -504,8 +577,7 @@ func (c *Client) MarkMovieAsPlayed(movieID string, userID string, movieName stri
 	url := fmt.Sprintf("%s/Users/%s/PlayedItems/%s", c.baseURL, userID, movieID)
 	logrus.Debugf("Using URL: %s", url)
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		SetHeader("Content-Type", "application/json").
 		Post(url)
 
@@ -542,8 +614,7 @@ func (c *Client) DeleteMovie(movieID string) error {
 	url := fmt.Sprintf("%s/Items/%s", c.baseURL, movieID)
 	logrus.Debugf("Using delete URL: %s", url)
 
-	resp, err := c.client.R().
-		SetHeader("X-MediaBrowser-Token", c.apiKey).
+	resp, err := c.newRequest().
 		Delete(url)
 
 	if err != nil {
