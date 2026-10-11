@@ -10,6 +10,8 @@ import (
 	"jellyfin-duplicate/test"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -603,6 +605,187 @@ func TestGetSeenMoviesForAllUsers(t *testing.T) {
 						}
 					}
 				}
+			}
+		})
+	}
+}
+
+// Reject legacy authentication to model Jellyfin 12's default configuration.
+func TestAPIRequestsUseModernAuthorization(t *testing.T) {
+	calls := []struct {
+		name string
+		call func(*Client) error
+	}{
+		{"libraries", func(c *Client) error { _, err := c.GetLibraries(); return err }},
+		{"library movies", func(c *Client) error { _, err := c.getMoviesFromLibrary("library"); return err }},
+		{"users", func(c *Client) error { _, err := c.GetAllUsers(); return err }},
+		{"user data", func(c *Client) error { _, err := c.GetMovieUserData("movie", "user"); return err }},
+		{"movie details", func(c *Client) error { _, err := c.GetMovieDetails("movie"); return err }},
+		{"seen movies", func(c *Client) error { _, err := c.GetSeenMoviesForUser("user"); return err }},
+		{"movie name and fallback", func(c *Client) error { _, err := c.GetMovieName("movie"); return err }},
+		{"user name", func(c *Client) error { _, err := c.GetUserName("user"); return err }},
+		{"mark played", func(c *Client) error { return c.MarkMovieAsPlayed("movie", "user", "Movie", "User") }},
+		{"delete", func(c *Client) error { return c.DeleteMovie("movie") }},
+	}
+	for _, tc := range calls {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				if r.Header.Get("Authorization") != `MediaBrowser Token="test-api-key"` || r.Header.Get("X-MediaBrowser-Token") != "" || r.URL.Query().Has("api_key") {
+					t.Error("request did not use modern authorization exclusively")
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				if r.Method != http.MethodGet {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+				if r.URL.Path == "/Users" {
+					_, _ = w.Write([]byte(`[]`))
+					return
+				}
+				_, _ = w.Write([]byte(`{"Items":[],"TotalRecordCount":0}`))
+			}))
+			defer server.Close()
+			assert.NoError(t, tc.call(NewClient(server.URL, "test-api-key", "user")))
+			if tc.name == "movie name and fallback" {
+				assert.Equal(t, 2, requests)
+			} else {
+				assert.Equal(t, 1, requests)
+			}
+		})
+	}
+}
+
+func TestLegacyAuthentication(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("legacy=%t", legacy), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if legacy {
+					assert.Equal(t, "test-api-key", r.Header.Get("X-MediaBrowser-Token"))
+					assert.Empty(t, r.Header.Get("Authorization"))
+				} else {
+					assert.Equal(t, `MediaBrowser Token="test-api-key"`, r.Header.Get("Authorization"))
+					assert.Empty(t, r.Header.Get("X-MediaBrowser-Token"))
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`[]`))
+			}))
+			defer server.Close()
+			_, err := NewClient(server.URL, "test-api-key", "user", legacy).GetAllUsers()
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestGetServerVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		body   string
+		status int
+		want   string
+	}{
+		{"success", `{"Version":"12.0.0"}`, http.StatusOK, "12.0.0"},
+		{"older server", `{"Version":"10.11.9"}`, http.StatusOK, "10.11.9"},
+		{"missing version", `{}`, http.StatusOK, ""},
+		{"invalid json", `invalid`, http.StatusOK, ""},
+		{"server error", `{}`, http.StatusServiceUnavailable, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/jellyfin/System/Info/Public", r.URL.Path)
+				assert.Equal(t, http.MethodGet, r.Method)
+				assert.Empty(t, r.Header.Get("Authorization"))
+				assert.Empty(t, r.Header.Get("X-MediaBrowser-Token"))
+				assert.Empty(t, r.URL.RawQuery)
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+			for _, legacy := range []bool{false, true} {
+				version, err := NewClient(server.URL+"/jellyfin/", "secret-key", "user", legacy).GetServerVersion()
+				assert.Equal(t, tc.want, version)
+				if tc.want == "" {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+			}
+		})
+	}
+}
+
+func TestConfigureAuthentication(t *testing.T) {
+	logger := logrus.StandardLogger()
+	oldHooks := logger.ReplaceHooks(make(logrus.LevelHooks))
+	hook := logtest.NewLocal(logger)
+	defer func() { logger.ReplaceHooks(oldHooks) }()
+	for _, tc := range []struct {
+		mode    string
+		version string
+		legacy  bool
+		warning bool
+		wantErr bool
+	}{
+		{"", "10.11.9", true, false, false},
+		{"AUTO", "12.0.0", false, false, false},
+		{"AUTO", "13.0.0", false, false, false},
+		{"AUTO", "12.0.0-rc1", false, false, false},
+		{"LEGACY", "10.11.9", true, false, false},
+		{"LEGACY", "12.0.0", true, true, false},
+		{"LATEST", "10.11.9", false, true, false},
+		{"LATEST", "12.0.0", false, false, false},
+		{"AUTO", "invalid", false, false, true},
+		{"AUTO", "", false, false, true},
+		{"LEGACY", "", true, false, true},
+		{"LATEST", "", false, false, true},
+		{"invalid", "12.0.0", false, false, true},
+	} {
+		t.Run(tc.mode+"/"+tc.version, func(t *testing.T) {
+			hook.Reset()
+			requests := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				assert.Equal(t, "/System/Info/Public", r.URL.Path)
+				assert.Empty(t, r.Header.Get("Authorization"))
+				assert.Empty(t, r.Header.Get("X-MediaBrowser-Token"))
+				if tc.version == "" {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					return
+				}
+				_, _ = fmt.Fprintf(w, `{"Version":%q}`, tc.version)
+			}))
+			defer server.Close()
+			client := NewClient(server.URL, "secret", "user")
+			err := client.ConfigureAuthentication(tc.mode)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.legacy, client.legacyAuth)
+			warning := false
+			versionLogs := 0
+			wantVersionLog := "Jellyfin server version: " + tc.version
+			if tc.version == "" {
+				wantVersionLog = "Jellyfin server version: unknown (public version request failed)"
+			}
+			for _, entry := range hook.AllEntries() {
+				if entry.Message == wantVersionLog {
+					versionLogs++
+				}
+				if entry.Level == logrus.WarnLevel {
+					warning = true
+				}
+			}
+			assert.Equal(t, tc.warning, warning)
+			if tc.mode == "invalid" {
+				assert.Zero(t, requests)
+			} else {
+				assert.Equal(t, 1, versionLogs, "log server version for every authentication mode")
+				assert.Equal(t, 1, requests)
 			}
 		})
 	}

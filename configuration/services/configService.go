@@ -2,6 +2,8 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	conf_models "jellyfin-duplicate/configuration/models"
 	"jellyfin-duplicate/configuration/services/assets"
@@ -41,6 +43,15 @@ func LoadConfig() (*conf_models.Config, error) {
 
 	// Load environment variables from .env file
 	config := loadEnv()
+	config.Jellyfin.Auth = strings.ToUpper(strings.TrimSpace(os.Getenv(constants.EnvJellyfinAuth)))
+	if config.Jellyfin.Auth == "" {
+		config.Jellyfin.Auth = "AUTO"
+	}
+	switch config.Jellyfin.Auth {
+	case "AUTO", "LEGACY", "LATEST":
+	default:
+		return nil, fmt.Errorf("%s must be AUTO, LEGACY, or LATEST", constants.EnvJellyfinAuth)
+	}
 
 	// Read config file
 	file, err := assets.GetConfigFile()
